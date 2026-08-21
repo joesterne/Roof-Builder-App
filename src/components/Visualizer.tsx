@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, Reorder } from 'motion/react';
 import { Layer } from '../types';
-import { GripVertical, ZoomIn, ZoomOut } from 'lucide-react';
+import { GripVertical, ZoomIn, ZoomOut, Trash2 } from 'lucide-react';
 
 interface VisualizerProps {
   layers: Layer[];
@@ -50,13 +50,27 @@ export default React.memo(function Visualizer({ layers, setLayers }: VisualizerP
                 <Reorder.Item 
                   key={layer.id} 
                   value={layer}
-                  className="bg-white border border-gray-200 rounded-lg p-3 flex items-center gap-3 shadow-sm cursor-grab active:cursor-grabbing hover:border-soprema-blue transition-colors"
+                  className="bg-white border border-gray-200 rounded-lg p-3 flex items-center gap-3 shadow-sm cursor-grab active:cursor-grabbing hover:border-soprema-blue transition-colors group"
                 >
                   <GripVertical className="w-4 h-4 text-gray-400 shrink-0" />
-                  <div className="flex flex-col min-w-0">
+                  <div className="flex flex-col min-w-0 flex-1">
                     <span className="text-xs font-bold text-soprema-blue uppercase tracking-wider">{layer.material.category}</span>
                     <span className="text-sm font-medium text-gray-900 truncate">{layer.material.name}</span>
                   </div>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLayers(prev => {
+                        const filtered = prev.filter(l => l.id !== layer.id);
+                        return filtered.map((l, i) => ({ ...l, order: i }));
+                      });
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                    title="Remove layer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </Reorder.Item>
               ))}
             </Reorder.Group>
