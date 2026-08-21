@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+@theme {
+  --color-soprema-blue: #0072CE;
+  --color-soprema-black: #212322;
+  --color-soprema-grey: #7C878E;
+}
