@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { Reorder } from 'motion/react';
 import { RoofParams, Layer, Category, Material } from '../types';
 import { SOPREMA_MATERIALS } from '../data';
-import { Plus, Trash2, Settings, List, MapPin, Search, X, ExternalLink } from 'lucide-react';
+import { Plus, Trash2, Settings, List, MapPin, Search, X, ExternalLink, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
 import LocationPicker from './LocationPicker';
 
 interface SidebarProps {
@@ -28,6 +29,20 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [compareList, setCompareList] = useState<Material[]>([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
+
+  const [localLayers, setLocalLayers] = useState([...layers].sort((a, b) => a.order - b.order));
+
+  useEffect(() => {
+    setLocalLayers([...layers].sort((a, b) => a.order - b.order));
+  }, [layers]);
+
+  const handleReorder = useCallback((newItems: Layer[]) => {
+    setLocalLayers(newItems);
+    setLayers(newItems.map((item, index) => ({
+      ...item,
+      order: index
+    })));
+  }, [setLayers]);
 
   const filteredMaterials = useMemo(() => {
     return SOPREMA_MATERIALS.filter(m => {
@@ -142,26 +157,56 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
 
         {/* Current Layers */}
         <div className="space-y-2 mb-6">
-          {layers.length === 0 ? (
+          {localLayers.length === 0 ? (
             <p className="text-sm text-gray-500 italic">No layers added yet. Start building your assembly below.</p>
           ) : (
-            layers.map((layer, index) => (
-              <div key={layer.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-md border border-gray-200">
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-soprema-blue uppercase tracking-wider">{layer.material.category}</span>
-                  <span className="text-sm font-medium text-gray-900">{layer.material.name}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex flex-col">
-                    <button onClick={() => moveLayer(index, 'up')} disabled={index === 0} className="text-gray-400 hover:text-soprema-black disabled:opacity-30">▲</button>
-                    <button onClick={() => moveLayer(index, 'down')} disabled={index === layers.length - 1} className="text-gray-400 hover:text-soprema-black disabled:opacity-30">▼</button>
+            <Reorder.Group axis="y" values={localLayers} onReorder={handleReorder} className="flex flex-col gap-2">
+              {localLayers.map((layer, index) => (
+                <Reorder.Item 
+                  key={layer.id}
+                  value={layer}
+                  className="flex items-center justify-between bg-white p-3 rounded-md border border-gray-200 shadow-sm cursor-grab active:cursor-grabbing group hover:border-soprema-blue transition-colors"
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <GripVertical className="w-4 h-4 text-gray-400 shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-xs font-bold text-soprema-blue uppercase tracking-wider truncate">{layer.material.category}</span>
+                      <span className="text-sm font-medium text-gray-900 truncate">{layer.material.name}</span>
+                    </div>
                   </div>
-                  <button onClick={() => removeLayer(layer.id)} className="text-red-500 hover:bg-red-50 p-1 rounded">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex flex-col gap-0.5">
+                      <button 
+                        onPointerDown={(e) => e.stopPropagation()} 
+                        onClick={() => moveLayer(index, 'up')} 
+                        disabled={index === 0} 
+                        className="text-gray-400 hover:text-soprema-blue disabled:opacity-30 disabled:hover:text-gray-400 transition-colors p-0.5 bg-gray-50 hover:bg-blue-50 rounded"
+                        title="Move Up"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button 
+                        onPointerDown={(e) => e.stopPropagation()} 
+                        onClick={() => moveLayer(index, 'down')} 
+                        disabled={index === localLayers.length - 1} 
+                        className="text-gray-400 hover:text-soprema-blue disabled:opacity-30 disabled:hover:text-gray-400 transition-colors p-0.5 bg-gray-50 hover:bg-blue-50 rounded"
+                        title="Move Down"
+                      >
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <button 
+                      onPointerDown={(e) => e.stopPropagation()} 
+                      onClick={() => removeLayer(layer.id)} 
+                      className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors"
+                      title="Remove Layer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </Reorder.Item>
+              ))}
+            </Reorder.Group>
           )}
         </div>
 
@@ -206,24 +251,22 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
                     onMouseLeave={() => setHoveredMaterial(null)}
                   >
                     <div className="flex flex-col flex-1 cursor-pointer" onClick={() => addLayer(material)}>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-medium text-gray-900">{material.name}</span>
-                        {material.productUrl && (
-                          <a 
-                            href={material.productUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-gray-400 hover:text-soprema-blue transition-colors"
-                            title="View product on Soprema website"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        )}
-                      </div>
+                      <span className="text-sm font-medium text-gray-900">{material.name}</span>
                       <span className="text-xs text-gray-500">${material.pricePerUnit.toFixed(2)} / {material.unit}</span>
                     </div>
                     <div className="flex items-center gap-2">
+                      {material.productUrl && (
+                        <a 
+                          href={material.productUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-gray-400 hover:text-soprema-blue transition-colors"
+                          title="View product on Soprema website"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
                       <input 
                         type="checkbox"
                         checked={isComparing}

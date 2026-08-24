@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { motion, Reorder } from 'motion/react';
-import { Layer } from '../types';
-import { GripVertical, ZoomIn, ZoomOut, Trash2 } from 'lucide-react';
+import { Layer, RoofParams } from '../types';
+import { GripVertical, ZoomIn, ZoomOut, Trash2, ExternalLink, Info } from 'lucide-react';
 
 interface VisualizerProps {
   layers: Layer[];
   setLayers: React.Dispatch<React.SetStateAction<Layer[]>>;
+  params: RoofParams;
 }
 
-export default React.memo(function Visualizer({ layers, setLayers }: VisualizerProps) {
+export default React.memo(function Visualizer({ layers, setLayers, params }: VisualizerProps) {
   // Local state for smooth framer-motion reordering
   const [items, setItems] = useState([...layers].sort((a, b) => a.order - b.order));
   const [zoom, setZoom] = useState(0.8);
@@ -30,6 +31,21 @@ export default React.memo(function Visualizer({ layers, setLayers }: VisualizerP
 
   const handleZoomIn = () => setZoom(z => Math.min(z + 0.2, 2.0));
   const handleZoomOut = () => setZoom(z => Math.max(z - 0.2, 0.4));
+
+  const getEstimatedWeightPerSqFt = (category: string) => {
+    switch (category) {
+      case 'Vapor Barrier': return 0.1;
+      case 'Insulation': return 0.2;
+      case 'Coverboard': return 0.5;
+      case 'Base Ply': return 0.7;
+      case 'Cap Sheet': return 1.0;
+      case 'Adhesive/Primer': return 0.05;
+      default: return 0.5;
+    }
+  };
+
+  const totalWeightPerSqFt = items.reduce((acc, layer) => acc + getEstimatedWeightPerSqFt(layer.material.category), 0);
+  const totalWeight = totalWeightPerSqFt * params.area;
 
   return (
     <div id="visualizer-capture" className="w-full h-full min-h-[400px] flex items-center justify-center bg-gray-50 overflow-hidden relative border-b border-gray-200">
@@ -57,20 +73,35 @@ export default React.memo(function Visualizer({ layers, setLayers }: VisualizerP
                     <span className="text-xs font-bold text-soprema-blue uppercase tracking-wider">{layer.material.category}</span>
                     <span className="text-sm font-medium text-gray-900 truncate">{layer.material.name}</span>
                   </div>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setLayers(prev => {
-                        const filtered = prev.filter(l => l.id !== layer.id);
-                        return filtered.map((l, i) => ({ ...l, order: i }));
-                      });
-                    }}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                    title="Remove layer"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {layer.material.productUrl && (
+                      <a 
+                        href={layer.material.productUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className="p-1.5 text-gray-400 hover:text-soprema-blue hover:bg-blue-50 rounded transition-colors"
+                        title="View product on Soprema website"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    )}
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLayers(prev => {
+                          const filtered = prev.filter(l => l.id !== layer.id);
+                          return filtered.map((l, i) => ({ ...l, order: i }));
+                        });
+                      }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                      title="Remove layer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </Reorder.Item>
               ))}
             </Reorder.Group>
@@ -153,6 +184,27 @@ export default React.memo(function Visualizer({ layers, setLayers }: VisualizerP
         <h3 className="font-bold text-soprema-black mb-2">Assembly View</h3>
         <p className="text-gray-600 text-xs">Layers are stacked bottom to top.</p>
         <p className="text-gray-600 text-xs">Deck is shown as base reference.</p>
+      </div>
+
+      {/* Summary Card */}
+      <div className="absolute bottom-4 left-6 bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-lg border border-gray-200 z-10 w-72">
+        <h3 className="font-bold text-soprema-black text-sm uppercase tracking-wide mb-3 flex items-center gap-2">
+          <Info className="w-4 h-4 text-soprema-blue" /> Project Summary
+        </h3>
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-gray-500 font-medium">Total Area</span>
+            <span className="text-sm font-bold text-gray-900">{params.area.toLocaleString()} sq ft</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-gray-500 font-medium">System Layers</span>
+            <span className="text-sm font-bold text-gray-900">{items.length}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-gray-500 font-medium">Estimated Weight</span>
+            <span className="text-sm font-bold text-gray-900">{totalWeight.toLocaleString(undefined, { maximumFractionDigits: 0 })} lbs</span>
+          </div>
+        </div>
       </div>
     </div>
   );

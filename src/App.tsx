@@ -1,10 +1,10 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import Visualizer from './components/Visualizer';
 import BOMExport from './components/BOMExport';
 import CodeAnalysis from './components/CodeAnalysis';
 import { RoofParams, Layer } from './types';
-import { Layers, FileText, ShieldAlert, Save, FolderOpen, RotateCcw, AlertTriangle, Share, X } from 'lucide-react';
+import { Layers, FileText, ShieldAlert, Save, FolderOpen, RotateCcw, AlertTriangle, Share, X, Download } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import html2canvas from 'html2canvas';
 import { SOPREMA_MATERIALS } from './data';
@@ -72,6 +72,29 @@ export default function App() {
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
 
+  const paramsRef = useRef(params);
+  const layersRef = useRef(layers);
+
+  useEffect(() => {
+    paramsRef.current = params;
+    layersRef.current = layers;
+  }, [params, layers]);
+
+  // Auto-save effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (layersRef.current.length > 0) {
+        const data = {
+          params: paramsRef.current,
+          layers: layersRef.current,
+          timestamp: Date.now()
+        };
+        localStorage.setItem('soprema_autosave', JSON.stringify(data));
+      }
+    }, 30000); // 30 seconds
+    return () => clearInterval(interval);
+  }, []);
+
   // Load shared state from URL on mount
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
@@ -91,6 +114,23 @@ export default function App() {
       }
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      // Try to load autosave
+      const autosaveStr = localStorage.getItem('soprema_autosave');
+      if (autosaveStr) {
+        try {
+          const parsed = JSON.parse(autosaveStr);
+          const sanitized = sanitizeProjectData(parsed);
+          if (sanitized && sanitized.layers.length > 0) {
+            setParams(sanitized.params);
+            setLayers(sanitized.layers);
+            setStatusMessage('Autosave recovered');
+            setTimeout(() => setStatusMessage(''), 3000);
+          }
+        } catch (e) {
+          console.error('Failed to parse autosave', e);
+        }
+      }
     }
   }, []);
 
@@ -104,6 +144,7 @@ export default function App() {
       unitSystem: 'imperial',
       projectNotes: ''
     });
+    localStorage.removeItem('soprema_autosave');
     setShowResetConfirm(false);
     setStatusMessage('Workspace Reset');
     setTimeout(() => setStatusMessage(''), 2000);
@@ -224,6 +265,60 @@ export default function App() {
     }
   }, [savedProjects]);
 
+  const duplicateProject = useCallback((project: SavedProject) => {
+    const duplicated: SavedProject = {
+      ...project,
+      id: Date.now().toString(),
+      name: `${project.name} (Copy)`,
+      date: new Date().toISOString()
+    };
+    const existingStr = localStorage.getItem('soprema_projects');
+    const existing: SavedProject[] = existingStr ? JSON.parse(existingStr) : [];
+    
+    // Check old save format for backward compatibility
+    const oldSave = localStorage.getItem('soprema-roof-config');
+    if (oldSave && existing.length === 0) {
+       try {
+         const parsed = JSON.parse(oldSave);
+         existing.push({
+           id: 'legacy',
+           name: 'Legacy Project',
+           date: new Date().toISOString(),
+           params: parsed.params,
+           layers: parsed.layers,
+           thumbnail: ''
+         });
+       } catch (e) {}
+    }
+    
+    existing.push(duplicated);
+    localStorage.setItem('soprema_projects', JSON.stringify(existing));
+    setSavedProjects(existing.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    toast.success(`Project "${project.name}" duplicated!`);
+  }, []);
+
+  const handleExport = useCallback(() => {
+    const data = {
+      params,
+      layers,
+      version: '1.0',
+      exportedAt: new Date().toISOString()
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `soprema-project-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    setStatusMessage('Project Exported');
+    setTimeout(() => setStatusMessage(''), 2000);
+  }, [params, layers]);
+
   const handleShare = useCallback(() => {
     try {
       const stateStr = encodeURIComponent(btoa(JSON.stringify({ params, layers })));
@@ -267,9 +362,9 @@ export default function App() {
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-soprema-blue rounded-md flex items-center justify-center font-bold text-lg">
-                S
+                R
               </div>
-              <h1 className="text-xl font-bold tracking-wider hidden md:block">SOPREMA SYSTEM BUILDER</h1>
+              <h1 className="text-xl font-bold tracking-wider hidden md:block">ROOF SYSTEM BUILDER</h1>
             </div>
             
             <div className="flex items-center gap-2">
@@ -278,6 +373,16 @@ export default function App() {
                 className="text-xs font-bold uppercase tracking-wider bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded border border-gray-600 transition-colors"
               >
                 Units: {params.unitSystem === 'imperial' ? 'Imperial (ft)' : 'Metric (m)'}
+              </button>
+              
+              <div className="h-4 w-px bg-gray-700 mx-1"></div>
+              
+              <button 
+                onClick={handleExport}
+                title="Export Project to JSON"
+                className="text-xs flex items-center gap-1.5 font-bold uppercase tracking-wider bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded border border-gray-600 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" /> Export
               </button>
               
               <div className="h-4 w-px bg-gray-700 mx-1"></div>
@@ -347,7 +452,7 @@ export default function App() {
         
         {/* Main Content Area */}
         <main className="flex-1 overflow-hidden relative">
-          {activeTab === 'visualizer' && <Visualizer layers={layers} setLayers={setLayers} />}
+          {activeTab === 'visualizer' && <Visualizer layers={layers} setLayers={setLayers} params={params} />}
           {activeTab === 'bom' && <BOMExport params={params} layers={layers} />}
           {activeTab === 'code' && <CodeAnalysis params={params} layers={layers} />}
         </main>
@@ -417,6 +522,12 @@ export default function App() {
                   </div>
                   
                   <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => duplicateProject(proj)}
+                      className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-soprema-blue hover:bg-blue-50 rounded border border-transparent hover:border-blue-200 transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      Duplicate
+                    </button>
                     <button 
                       onClick={() => deleteProject(proj.id)}
                       className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded border border-transparent hover:border-red-200 transition-colors opacity-0 group-hover:opacity-100"

@@ -1,5 +1,5 @@
 {
-  "name": "Soprema System Builder",
+  "name": "Roof System Builder",
   "description": "Roofing application to build and visualize Soprema roofing systems, estimate costs, export BOMs, and check local building codes.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
