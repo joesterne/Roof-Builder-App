@@ -2,8 +2,9 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Reorder } from 'motion/react';
 import { RoofParams, Layer, Category, Material } from '../types';
 import { SOPREMA_MATERIALS } from '../data';
-import { Plus, Trash2, Settings, List, MapPin, Search, X, ExternalLink, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Settings, List, MapPin, Search, X, ExternalLink, ChevronUp, ChevronDown, GripVertical, Calculator } from 'lucide-react';
 import LocationPicker from './LocationPicker';
+import { getCategoryPriority, parseThickness, parseRValue } from '../utils';
 
 interface SidebarProps {
   params: RoofParams;
@@ -54,10 +55,31 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
   }, [selectedCategory, searchQuery]);
 
   const addLayer = useCallback((material: Material) => {
-    setLayers(prev => [
-      ...prev,
-      { id: Math.random().toString(36).substr(2, 9), material, order: prev.length }
-    ]);
+    setLayers(prev => {
+      const priority = getCategoryPriority(material.category);
+      
+      // If it's an adhesive/primer, or if there are no layers, append to top
+      if (priority === -1 || prev.length === 0) {
+        return [...prev, { id: Math.random().toString(36).substr(2, 9), material, order: prev.length }];
+      }
+      
+      // Find the right insertion index from top to bottom
+      let insertIndex = prev.length;
+      for (let i = prev.length - 1; i >= 0; i--) {
+         const p = getCategoryPriority(prev[i].material.category);
+         if (p !== -1 && p > priority) {
+           insertIndex = i;
+         } else if (p !== -1 && p <= priority) {
+           break;
+         }
+      }
+      
+      const newLayers = [...prev];
+      newLayers.splice(insertIndex, 0, { id: Math.random().toString(36).substr(2, 9), material, order: 0 });
+      
+      // re-assign order
+      return newLayers.map((l, idx) => ({ ...l, order: idx }));
+    });
   }, [setLayers]);
 
   const removeLayer = useCallback((id: string) => {
@@ -81,6 +103,33 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
       return newLayers.map((l, i) => ({ ...l, order: i }));
     });
   }, [layers.length, setLayers]);
+
+  const stats = useMemo(() => {
+    let totalThickness = 0;
+    let totalRValue = 0;
+    let totalCostPerSqFt = 0;
+    let rValueLayerCount = 0;
+
+    layers.forEach(layer => {
+      const thickness = parseThickness(layer.material.techSpecs?.Thickness);
+      totalThickness += thickness;
+      
+      const rValueStr = layer.material.techSpecs?.['R-Value'];
+      if (rValueStr) {
+        const rValue = parseRValue(rValueStr, thickness);
+        totalRValue += rValue;
+        rValueLayerCount += 1;
+      }
+
+      if (layer.material.coveragePerUnit > 0) {
+        totalCostPerSqFt += (layer.material.pricePerUnit / layer.material.coveragePerUnit);
+      }
+    });
+
+    const avgRValue = rValueLayerCount > 0 ? (totalRValue / rValueLayerCount) : 0;
+
+    return { totalThickness, avgRValue, totalCostPerSqFt };
+  }, [layers]);
 
   return (
     <div className="w-80 bg-white border-r border-gray-200 h-full flex flex-col overflow-y-auto">
@@ -145,6 +194,27 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
               placeholder="Add client requirements, specific conditions, or custom notes..."
               rows={3}
             />
+          </div>
+        </div>
+      </div>
+
+      <div className="p-6 border-b border-gray-200 bg-gray-50">
+        <h2 className="text-lg font-bold text-soprema-black flex items-center gap-2 mb-4">
+          <Calculator className="w-5 h-5 text-soprema-blue" />
+          Project Statistics
+        </h2>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white p-3 rounded-md border border-gray-200 shadow-sm flex flex-col justify-center items-center text-center">
+            <span className="text-xs text-gray-500 font-medium">Est. Cost / Sq Ft</span>
+            <span className="text-lg font-bold text-gray-900">${stats.totalCostPerSqFt.toFixed(2)}</span>
+          </div>
+          <div className="bg-white p-3 rounded-md border border-gray-200 shadow-sm flex flex-col justify-center items-center text-center">
+            <span className="text-xs text-gray-500 font-medium">Total Thickness</span>
+            <span className="text-lg font-bold text-gray-900">{stats.totalThickness.toFixed(2)}"</span>
+          </div>
+          <div className="col-span-2 bg-white p-3 rounded-md border border-gray-200 shadow-sm flex flex-col justify-center items-center text-center">
+            <span className="text-xs text-gray-500 font-medium">Avg Layer R-Value</span>
+            <span className="text-lg font-bold text-gray-900">{stats.avgRValue.toFixed(1)}</span>
           </div>
         </div>
       </div>

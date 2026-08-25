@@ -71,6 +71,7 @@ export default function App() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'name-asc' | 'name-desc'>('newest');
 
   const paramsRef = useRef(params);
   const layersRef = useRef(layers);
@@ -351,6 +352,14 @@ export default function App() {
     }
   }, [params, layers]);
 
+  const sortedProjects = [...savedProjects].sort((a, b) => {
+    if (sortOrder === 'newest') return new Date(b.date).getTime() - new Date(a.date).getTime();
+    if (sortOrder === 'oldest') return new Date(a.date).getTime() - new Date(b.date).getTime();
+    if (sortOrder === 'name-asc') return a.name.localeCompare(b.name);
+    if (sortOrder === 'name-desc') return b.name.localeCompare(a.name);
+    return 0;
+  });
+
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden font-sans">
       <Toaster position="bottom-right" richColors />
@@ -497,13 +506,25 @@ export default function App() {
               <h3 className="text-lg font-bold text-soprema-black flex items-center gap-2">
                 <FolderOpen className="w-5 h-5 text-soprema-blue" /> Saved Projects
               </h3>
-              <button onClick={() => setShowLoadModal(false)} className="text-gray-500 hover:text-gray-900 p-1 rounded-md hover:bg-gray-200 transition-colors">
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-4">
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value as any)}
+                  className="text-sm border border-gray-300 rounded px-2 py-1 outline-none focus:border-soprema-blue"
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="name-asc">Name (A-Z)</option>
+                  <option value="name-desc">Name (Z-A)</option>
+                </select>
+                <button onClick={() => setShowLoadModal(false)} className="text-gray-500 hover:text-gray-900 p-1 rounded-md hover:bg-gray-200 transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
             
             <div className="p-4 overflow-y-auto flex-1 flex flex-col gap-3">
-              {savedProjects.map(proj => (
+              {sortedProjects.map(proj => (
                 <div key={proj.id} className="border border-gray-200 rounded-lg p-3 flex justify-between items-center hover:bg-blue-50/50 transition-colors group">
                   <div className="flex items-center gap-4">
                     {proj.thumbnail ? (

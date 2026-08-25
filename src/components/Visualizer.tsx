@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { motion, Reorder } from 'motion/react';
 import { Layer, RoofParams } from '../types';
 import { GripVertical, ZoomIn, ZoomOut, Trash2, ExternalLink, Info } from 'lucide-react';
+import { isValidOrder } from '../utils';
+import { toast } from 'sonner';
 
 interface VisualizerProps {
   layers: Layer[];
@@ -14,12 +16,22 @@ export default React.memo(function Visualizer({ layers, setLayers, params }: Vis
   const [items, setItems] = useState([...layers].sort((a, b) => a.order - b.order));
   const [zoom, setZoom] = useState(0.8);
 
+  const [hoveredLayer, setHoveredLayer] = useState<Layer | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
   // Sync when props change from other tabs or sidebar
   useEffect(() => {
     setItems([...layers].sort((a, b) => a.order - b.order));
   }, [layers]);
 
   const handleReorder = (newItems: Layer[]) => {
+    if (!isValidOrder(newItems)) {
+      toast.error('Invalid layer order. Please follow standard assembly hierarchy.');
+      // Revert to current valid order
+      setItems([...layers].sort((a, b) => a.order - b.order));
+      return;
+    }
+
     setItems(newItems);
     // Update global layers with new order
     const updatedLayers = newItems.map((item, index) => ({
@@ -67,6 +79,11 @@ export default React.memo(function Visualizer({ layers, setLayers, params }: Vis
                   key={layer.id} 
                   value={layer}
                   className="bg-white border border-gray-200 rounded-lg p-3 flex items-center gap-3 shadow-sm cursor-grab active:cursor-grabbing hover:border-soprema-blue transition-colors group"
+                  onMouseMove={(e) => {
+                    setHoveredLayer(layer);
+                    setMousePos({ x: e.clientX, y: e.clientY });
+                  }}
+                  onMouseLeave={() => setHoveredLayer(null)}
                 >
                   <GripVertical className="w-4 h-4 text-gray-400 shrink-0" />
                   <div className="flex flex-col min-w-0 flex-1">
@@ -206,6 +223,43 @@ export default React.memo(function Visualizer({ layers, setLayers, params }: Vis
           </div>
         </div>
       </div>
+      {/* Hover Tooltip Portal */}
+      {hoveredLayer && (
+        <div 
+          className="fixed z-[100] w-72 bg-soprema-black text-white text-xs rounded-md p-3 shadow-xl pointer-events-none"
+          style={{ 
+            left: mousePos.x + 15, 
+            top: mousePos.y + 15 > window.innerHeight - 150 ? mousePos.y - 120 : mousePos.y + 15 
+          }}
+        >
+          <p className="font-bold text-sm mb-1">{hoveredLayer.material.name}</p>
+          <p className="text-gray-300 mb-2 leading-relaxed">{hoveredLayer.material.description}</p>
+          
+          <div className="text-gray-300 space-y-1 mt-2 border-t border-gray-700 pt-2">
+            {hoveredLayer.material.techSpecs && Object.keys(hoveredLayer.material.techSpecs).length > 0 ? (
+              Object.entries(hoveredLayer.material.techSpecs).map(([k, v]) => (
+                <div key={k} className="flex justify-between">
+                  <span>{k}:</span>
+                  <span className="font-medium text-white">{v}</span>
+                </div>
+              ))
+            ) : (
+              <p className="italic text-gray-500">No tech specs available</p>
+            )}
+            
+            {hoveredLayer.material.certifications && hoveredLayer.material.certifications.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-gray-700">
+                <span className="text-gray-400 block mb-1">Certifications:</span>
+                <div className="flex flex-wrap gap-1">
+                  {hoveredLayer.material.certifications.map(c => (
+                    <span key={c} className="px-1.5 py-0.5 bg-gray-800 rounded text-[10px] text-gray-300">{c}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 });
