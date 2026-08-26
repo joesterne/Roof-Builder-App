@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Reorder } from 'motion/react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { RoofParams, Layer, Category, Material } from '../types';
 import { SOPREMA_MATERIALS } from '../data';
 import { Plus, Trash2, Settings, List, MapPin, Search, X, ExternalLink, ChevronUp, ChevronDown, GripVertical, Calculator } from 'lucide-react';
@@ -110,6 +111,8 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
     let totalCostPerSqFt = 0;
     let rValueLayerCount = 0;
 
+    const categoryDataMap: Record<string, { name: string, value: number, cost: number, color: string }> = {};
+
     layers.forEach(layer => {
       const thickness = parseThickness(layer.material.techSpecs?.Thickness);
       totalThickness += thickness;
@@ -121,19 +124,36 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
         rValueLayerCount += 1;
       }
 
+      let layerCost = 0;
       if (layer.material.coveragePerUnit > 0) {
-        totalCostPerSqFt += (layer.material.pricePerUnit / layer.material.coveragePerUnit);
+        layerCost = layer.material.pricePerUnit / layer.material.coveragePerUnit;
+        totalCostPerSqFt += layerCost;
       }
+
+      const cat = layer.material.category;
+      if (!categoryDataMap[cat]) {
+        categoryDataMap[cat] = {
+           name: cat,
+           value: 0,
+           cost: 0,
+           color: layer.material.colorHex || '#9ca3af'
+        };
+      }
+      categoryDataMap[cat].value += 1; // Count ratio
+      categoryDataMap[cat].cost += layerCost; // Cost ratio
     });
 
     const avgRValue = rValueLayerCount > 0 ? (totalRValue / rValueLayerCount) : 0;
+    
+    // Sort by cost for a consistent chart display
+    const compositionData = Object.values(categoryDataMap).sort((a, b) => b.cost - a.cost);
 
-    return { totalThickness, avgRValue, totalCostPerSqFt };
+    return { totalThickness, avgRValue, totalCostPerSqFt, compositionData };
   }, [layers]);
 
   return (
-    <div className="w-80 bg-white border-r border-gray-200 h-full flex flex-col overflow-y-auto">
-      <div className="p-6 border-b border-gray-200">
+    <div className="w-80 bg-bg-panel border-r border-border-main h-full flex flex-col overflow-y-auto">
+      <div className="p-6 border-b border-border-main">
         <h2 className="text-lg font-bold text-soprema-black flex items-center gap-2 mb-4">
           <Settings className="w-5 h-5 text-soprema-blue" />
           Project Parameters
@@ -141,7 +161,7 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-text-secondary mb-1">
               Roof Size ({params.unitSystem === 'metric' ? 'Sq M' : 'Sq Ft'})
             </label>
             <input 
@@ -155,7 +175,7 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
           
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Pitch (x/12)</label>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Pitch (x/12)</label>
               <input 
                 type="number" 
                 value={params.pitch || ''}
@@ -164,7 +184,7 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Waste Factor (%)</label>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Waste Factor (%)</label>
               <input 
                 type="number" 
                 value={params.wasteFactor * 100}
@@ -175,8 +195,8 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-              <MapPin className="w-4 h-4 text-gray-500" /> Project Location
+            <label className="block text-sm font-medium text-text-secondary mb-1 flex items-center gap-1">
+              <MapPin className="w-4 h-4 text-text-muted" /> Project Location
             </label>
             <LocationPicker 
               onLocationSelect={(lat, lng) => {
@@ -184,39 +204,58 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
               }} 
             />
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Project Notes & Requirements</label>
-            <textarea 
-              value={params.projectNotes || ''}
-              onChange={e => setParams({ ...params, projectNotes: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-soprema-blue resize-y"
-              placeholder="Add client requirements, specific conditions, or custom notes..."
-              rows={3}
-            />
-          </div>
         </div>
       </div>
 
-      <div className="p-6 border-b border-gray-200 bg-gray-50">
+      <div className="p-6 border-b border-border-main bg-bg-panel-hover">
         <h2 className="text-lg font-bold text-soprema-black flex items-center gap-2 mb-4">
           <Calculator className="w-5 h-5 text-soprema-blue" />
           Project Statistics
         </h2>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white p-3 rounded-md border border-gray-200 shadow-sm flex flex-col justify-center items-center text-center">
-            <span className="text-xs text-gray-500 font-medium">Est. Cost / Sq Ft</span>
-            <span className="text-lg font-bold text-gray-900">${stats.totalCostPerSqFt.toFixed(2)}</span>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="bg-bg-panel p-3 rounded-md border border-border-main shadow-sm flex flex-col justify-center items-center text-center">
+            <span className="text-xs text-text-muted font-medium">Est. Cost / Sq Ft</span>
+            <span className="text-lg font-bold text-text-main">${stats.totalCostPerSqFt.toFixed(2)}</span>
           </div>
-          <div className="bg-white p-3 rounded-md border border-gray-200 shadow-sm flex flex-col justify-center items-center text-center">
-            <span className="text-xs text-gray-500 font-medium">Total Thickness</span>
-            <span className="text-lg font-bold text-gray-900">{stats.totalThickness.toFixed(2)}"</span>
+          <div className="bg-bg-panel p-3 rounded-md border border-border-main shadow-sm flex flex-col justify-center items-center text-center">
+            <span className="text-xs text-text-muted font-medium">Total Thickness</span>
+            <span className="text-lg font-bold text-text-main">{stats.totalThickness.toFixed(2)}"</span>
           </div>
-          <div className="col-span-2 bg-white p-3 rounded-md border border-gray-200 shadow-sm flex flex-col justify-center items-center text-center">
-            <span className="text-xs text-gray-500 font-medium">Avg Layer R-Value</span>
-            <span className="text-lg font-bold text-gray-900">{stats.avgRValue.toFixed(1)}</span>
+          <div className="col-span-2 bg-bg-panel p-3 rounded-md border border-border-main shadow-sm flex flex-col justify-center items-center text-center">
+            <span className="text-xs text-text-muted font-medium">Avg Layer R-Value</span>
+            <span className="text-lg font-bold text-text-main">{stats.avgRValue.toFixed(1)}</span>
           </div>
         </div>
+
+        {stats.compositionData.length > 0 && (
+          <div className="bg-bg-panel p-3 rounded-md border border-border-main shadow-sm flex flex-col">
+            <span className="text-xs text-text-muted font-medium mb-2 text-center">Cost Composition</span>
+            <div className="h-48 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={stats.compositionData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={30}
+                    outerRadius={50}
+                    paddingAngle={2}
+                    dataKey="cost"
+                  >
+                    {stats.compositionData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip 
+                    formatter={(value: number) => `$${value.toFixed(2)}`}
+                    contentStyle={{ backgroundColor: 'var(--bg-panel)', borderColor: 'var(--border-main)', color: 'var(--text-main)', fontSize: '12px' }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: 'var(--text-main)' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="p-6 flex-1 flex flex-col">
@@ -228,20 +267,20 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
         {/* Current Layers */}
         <div className="space-y-2 mb-6">
           {localLayers.length === 0 ? (
-            <p className="text-sm text-gray-500 italic">No layers added yet. Start building your assembly below.</p>
+            <p className="text-sm text-text-muted italic">No layers added yet. Start building your assembly below.</p>
           ) : (
             <Reorder.Group axis="y" values={localLayers} onReorder={handleReorder} className="flex flex-col gap-2">
               {localLayers.map((layer, index) => (
                 <Reorder.Item 
                   key={layer.id}
                   value={layer}
-                  className="flex items-center justify-between bg-white p-3 rounded-md border border-gray-200 shadow-sm cursor-grab active:cursor-grabbing group hover:border-soprema-blue transition-colors"
+                  className="flex items-center justify-between bg-bg-panel p-3 rounded-md border border-border-main shadow-sm cursor-grab active:cursor-grabbing group hover:border-soprema-blue transition-colors"
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <GripVertical className="w-4 h-4 text-gray-400 shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className="text-xs font-bold text-soprema-blue uppercase tracking-wider truncate">{layer.material.category}</span>
-                      <span className="text-sm font-medium text-gray-900 truncate">{layer.material.name}</span>
+                      <span className="text-sm font-medium text-text-main truncate">{layer.material.name}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -250,7 +289,7 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
                         onPointerDown={(e) => e.stopPropagation()} 
                         onClick={() => moveLayer(index, 'up')} 
                         disabled={index === 0} 
-                        className="text-gray-400 hover:text-soprema-blue disabled:opacity-30 disabled:hover:text-gray-400 transition-colors p-0.5 bg-gray-50 hover:bg-blue-50 rounded"
+                        className="text-gray-400 hover:text-soprema-blue disabled:opacity-30 disabled:hover:text-gray-400 transition-colors p-0.5 bg-bg-panel-hover hover:bg-blue-50 rounded"
                         title="Move Up"
                       >
                         <ChevronUp className="w-3.5 h-3.5" />
@@ -259,7 +298,7 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
                         onPointerDown={(e) => e.stopPropagation()} 
                         onClick={() => moveLayer(index, 'down')} 
                         disabled={index === localLayers.length - 1} 
-                        className="text-gray-400 hover:text-soprema-blue disabled:opacity-30 disabled:hover:text-gray-400 transition-colors p-0.5 bg-gray-50 hover:bg-blue-50 rounded"
+                        className="text-gray-400 hover:text-soprema-blue disabled:opacity-30 disabled:hover:text-gray-400 transition-colors p-0.5 bg-bg-panel-hover hover:bg-blue-50 rounded"
                         title="Move Down"
                       >
                         <ChevronDown className="w-3.5 h-3.5" />
@@ -281,8 +320,8 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
         </div>
 
         {/* Add Material */}
-        <div className="mt-auto pt-4 border-t border-gray-200">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Add Material</label>
+        <div className="mt-auto pt-4 border-t border-border-main">
+          <label className="block text-sm font-medium text-text-secondary mb-2">Add Material</label>
           
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -306,14 +345,14 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
           
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {filteredMaterials.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-2">No materials found.</p>
+              <p className="text-sm text-text-muted text-center py-2">No materials found.</p>
             ) : (
               filteredMaterials.map(material => {
                 const isComparing = compareList.some(m => m.id === material.id);
                 return (
                   <div
                     key={material.id}
-                    className="w-full flex justify-between items-center px-3 py-2 border border-gray-200 rounded-md hover:border-soprema-blue hover:bg-blue-50 transition-colors group"
+                    className="w-full flex justify-between items-center px-3 py-2 border border-border-main rounded-md hover:border-soprema-blue hover:bg-blue-50 transition-colors group"
                     onMouseMove={(e) => {
                       setHoveredMaterial(material);
                       setMousePos({ x: e.clientX, y: e.clientY });
@@ -321,8 +360,8 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
                     onMouseLeave={() => setHoveredMaterial(null)}
                   >
                     <div className="flex flex-col flex-1 cursor-pointer" onClick={() => addLayer(material)}>
-                      <span className="text-sm font-medium text-gray-900">{material.name}</span>
-                      <span className="text-xs text-gray-500">${material.pricePerUnit.toFixed(2)} / {material.unit}</span>
+                      <span className="text-sm font-medium text-text-main">{material.name}</span>
+                      <span className="text-xs text-text-muted">${material.pricePerUnit.toFixed(2)} / {material.unit}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       {material.productUrl && (
@@ -402,10 +441,10 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
       {/* Comparison Modal */}
       {showCompareModal && compareList.length === 2 && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+          <div className="bg-bg-panel rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-border-main flex justify-between items-center bg-bg-panel-hover">
               <h3 className="text-lg font-bold text-soprema-black">Product Comparison</h3>
-              <button onClick={() => setShowCompareModal(false)} className="text-gray-500 hover:text-gray-900 p-1 rounded-md hover:bg-gray-200 transition-colors">
+              <button onClick={() => setShowCompareModal(false)} className="text-text-muted hover:text-text-main p-1 rounded-md hover:bg-gray-200 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -417,44 +456,44 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
                   <div className="mb-4">
                     <span className="text-xs font-bold text-soprema-blue uppercase tracking-wider">{compareList[0].category}</span>
                     <div className="flex items-center gap-2 mt-1">
-                      <h4 className="text-xl font-bold text-gray-900">{compareList[0].name}</h4>
+                      <h4 className="text-xl font-bold text-text-main">{compareList[0].name}</h4>
                       {compareList[0].productUrl && (
                         <a href={compareList[0].productUrl} target="_blank" rel="noopener noreferrer" className="text-soprema-blue hover:text-blue-700 bg-blue-50 p-1 rounded transition-colors" title="View product page">
                           <ExternalLink className="w-4 h-4" />
                         </a>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600 mt-2">{compareList[0].description}</p>
+                    <p className="text-sm text-text-muted mt-2">{compareList[0].description}</p>
                   </div>
                   
-                  <div className="bg-gray-50 p-4 rounded-md border border-gray-200 mb-6">
-                    <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-200">
-                      <span className="text-sm font-medium text-gray-700">Price</span>
-                      <span className="text-sm font-bold text-gray-900">${compareList[0].pricePerUnit.toFixed(2)} / {compareList[0].unit}</span>
+                  <div className="bg-bg-panel-hover p-4 rounded-md border border-border-main mb-6">
+                    <div className="flex justify-between items-center mb-2 pb-2 border-b border-border-main">
+                      <span className="text-sm font-medium text-text-secondary">Price</span>
+                      <span className="text-sm font-bold text-text-main">${compareList[0].pricePerUnit.toFixed(2)} / {compareList[0].unit}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-gray-700">Coverage</span>
-                      <span className="text-sm font-bold text-gray-900">{compareList[0].coveragePerUnit} sq ft / {compareList[0].unit}</span>
+                      <span className="text-sm font-medium text-text-secondary">Coverage</span>
+                      <span className="text-sm font-bold text-text-main">{compareList[0].coveragePerUnit} sq ft / {compareList[0].unit}</span>
                     </div>
                   </div>
 
-                  <h5 className="font-semibold text-gray-900 mb-3 border-b border-gray-200 pb-1">Technical Specifications</h5>
+                  <h5 className="font-semibold text-text-main mb-3 border-b border-border-main pb-1">Technical Specifications</h5>
                   <div className="space-y-2 mb-6">
                     {compareList[0].techSpecs ? Object.entries(compareList[0].techSpecs).map(([key, val]) => (
                       <div key={key} className="flex justify-between text-sm">
-                        <span className="text-gray-600">{key}:</span>
-                        <span className="font-medium text-gray-900">{val}</span>
+                        <span className="text-text-muted">{key}:</span>
+                        <span className="font-medium text-text-main">{val}</span>
                       </div>
-                    )) : <p className="text-sm text-gray-500 italic">No technical specs available.</p>}
+                    )) : <p className="text-sm text-text-muted italic">No technical specs available.</p>}
                   </div>
 
-                  <h5 className="font-semibold text-gray-900 mb-3 border-b border-gray-200 pb-1">Certifications</h5>
+                  <h5 className="font-semibold text-text-main mb-3 border-b border-border-main pb-1">Certifications</h5>
                   <div className="flex flex-wrap gap-2">
                     {compareList[0].certifications ? compareList[0].certifications.map(cert => (
                       <span key={cert} className="px-2 py-1 bg-blue-50 text-soprema-blue text-xs font-medium rounded border border-blue-100">
                         {cert}
                       </span>
-                    )) : <span className="text-sm text-gray-500 italic">None</span>}
+                    )) : <span className="text-sm text-text-muted italic">None</span>}
                   </div>
                 </div>
 
@@ -463,44 +502,44 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
                   <div className="mb-4">
                     <span className="text-xs font-bold text-soprema-blue uppercase tracking-wider">{compareList[1].category}</span>
                     <div className="flex items-center gap-2 mt-1">
-                      <h4 className="text-xl font-bold text-gray-900">{compareList[1].name}</h4>
+                      <h4 className="text-xl font-bold text-text-main">{compareList[1].name}</h4>
                       {compareList[1].productUrl && (
                         <a href={compareList[1].productUrl} target="_blank" rel="noopener noreferrer" className="text-soprema-blue hover:text-blue-700 bg-blue-50 p-1 rounded transition-colors" title="View product page">
                           <ExternalLink className="w-4 h-4" />
                         </a>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600 mt-2">{compareList[1].description}</p>
+                    <p className="text-sm text-text-muted mt-2">{compareList[1].description}</p>
                   </div>
                   
-                  <div className="bg-gray-50 p-4 rounded-md border border-gray-200 mb-6">
-                    <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-200">
-                      <span className="text-sm font-medium text-gray-700">Price</span>
-                      <span className="text-sm font-bold text-gray-900">${compareList[1].pricePerUnit.toFixed(2)} / {compareList[1].unit}</span>
+                  <div className="bg-bg-panel-hover p-4 rounded-md border border-border-main mb-6">
+                    <div className="flex justify-between items-center mb-2 pb-2 border-b border-border-main">
+                      <span className="text-sm font-medium text-text-secondary">Price</span>
+                      <span className="text-sm font-bold text-text-main">${compareList[1].pricePerUnit.toFixed(2)} / {compareList[1].unit}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-gray-700">Coverage</span>
-                      <span className="text-sm font-bold text-gray-900">{compareList[1].coveragePerUnit} sq ft / {compareList[1].unit}</span>
+                      <span className="text-sm font-medium text-text-secondary">Coverage</span>
+                      <span className="text-sm font-bold text-text-main">{compareList[1].coveragePerUnit} sq ft / {compareList[1].unit}</span>
                     </div>
                   </div>
 
-                  <h5 className="font-semibold text-gray-900 mb-3 border-b border-gray-200 pb-1">Technical Specifications</h5>
+                  <h5 className="font-semibold text-text-main mb-3 border-b border-border-main pb-1">Technical Specifications</h5>
                   <div className="space-y-2 mb-6">
                     {compareList[1].techSpecs ? Object.entries(compareList[1].techSpecs).map(([key, val]) => (
                       <div key={key} className="flex justify-between text-sm">
-                        <span className="text-gray-600">{key}:</span>
-                        <span className="font-medium text-gray-900">{val}</span>
+                        <span className="text-text-muted">{key}:</span>
+                        <span className="font-medium text-text-main">{val}</span>
                       </div>
-                    )) : <p className="text-sm text-gray-500 italic">No technical specs available.</p>}
+                    )) : <p className="text-sm text-text-muted italic">No technical specs available.</p>}
                   </div>
 
-                  <h5 className="font-semibold text-gray-900 mb-3 border-b border-gray-200 pb-1">Certifications</h5>
+                  <h5 className="font-semibold text-text-main mb-3 border-b border-border-main pb-1">Certifications</h5>
                   <div className="flex flex-wrap gap-2">
                     {compareList[1].certifications ? compareList[1].certifications.map(cert => (
                       <span key={cert} className="px-2 py-1 bg-blue-50 text-soprema-blue text-xs font-medium rounded border border-blue-100">
                         {cert}
                       </span>
-                    )) : <span className="text-sm text-gray-500 italic">None</span>}
+                    )) : <span className="text-sm text-text-muted italic">None</span>}
                   </div>
                 </div>
               </div>

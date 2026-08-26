@@ -69,15 +69,15 @@ export default React.memo(function BOMExport({ params, layers }: BOMExportProps)
 
   if (layers.length === 0) {
     return (
-      <div className="p-8 text-center text-gray-500">
+      <div className="p-8 text-center text-text-muted">
         Add materials to see the Bill of Materials.
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      <div className="flex justify-between items-center p-4 border-b border-gray-200">
+    <div className="flex flex-col h-full bg-bg-panel">
+      <div className="flex justify-between items-center p-4 border-b border-border-main">
         <h2 className="text-xl font-bold text-soprema-black">Bill of Materials</h2>
         <button 
           onClick={handleExportPDF}
@@ -92,46 +92,46 @@ export default React.memo(function BOMExport({ params, layers }: BOMExportProps)
       </div>
       
       {/* Scrollable container for UI, but the print ref wraps the actual content */}
-      <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+      <div className="flex-1 overflow-y-auto p-6 bg-bg-panel-hover">
         <div 
           ref={printRef} 
-          className="bg-white p-8 max-w-3xl mx-auto shadow-sm border border-gray-200"
+          className="bg-bg-panel p-8 max-w-3xl mx-auto shadow-sm border border-border-main"
         >
-          <div className="flex justify-between items-start mb-8 border-b border-gray-200 pb-6">
+          <div className="flex justify-between items-start mb-8 border-b border-border-main pb-6">
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight text-soprema-blue mb-1">SOPREMA</h1>
-              <p className="text-gray-500 font-medium">Project Bill of Materials</p>
+              <p className="text-text-muted font-medium">Project Bill of Materials</p>
             </div>
-            <div className="text-right text-sm text-gray-600">
-              <p><span className="font-semibold text-gray-900">Size:</span> {params.area || 0} {params.unitSystem === 'metric' ? 'Sq M' : 'Sq Ft'}</p>
-              <p><span className="font-semibold text-gray-900">Pitch:</span> {params.pitch || 0}/12</p>
-              <p><span className="font-semibold text-gray-900">Waste:</span> {params.wasteFactor * 100}%</p>
-              <p><span className="font-semibold text-gray-900">Location:</span> {params.location || 'N/A'}</p>
+            <div className="text-right text-sm text-text-muted">
+              <p><span className="font-semibold text-text-main">Size:</span> {params.area || 0} {params.unitSystem === 'metric' ? 'Sq M' : 'Sq Ft'}</p>
+              <p><span className="font-semibold text-text-main">Pitch:</span> {params.pitch || 0}/12</p>
+              <p><span className="font-semibold text-text-main">Waste:</span> {params.wasteFactor * 100}%</p>
+              <p><span className="font-semibold text-text-main">Location:</span> {params.location || 'N/A'}</p>
             </div>
           </div>
 
           {params.projectNotes && (
-            <div className="mb-8 p-4 bg-gray-50 border border-gray-200 rounded-md">
-              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">Project Notes & Requirements</h3>
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{params.projectNotes}</p>
+            <div className="mb-8 p-4 bg-bg-panel-hover border border-border-main rounded-md">
+              <h3 className="text-sm font-bold text-text-main uppercase tracking-wider mb-2">Project Notes & Requirements</h3>
+              <p className="text-sm text-text-secondary whitespace-pre-wrap">{params.projectNotes}</p>
             </div>
           )}
 
           <table className="w-full text-left border-collapse mb-8">
             <thead>
-              <tr className="border-b-2 border-gray-300 text-sm uppercase tracking-wider text-gray-500">
+              <tr className="border-b-2 border-gray-300 text-sm uppercase tracking-wider text-text-muted">
                 <th className="py-3 px-2 font-semibold">Material</th>
                 <th className="py-3 px-2 font-semibold text-right">Quantity</th>
                 <th className="py-3 px-2 font-semibold text-right">Unit Price</th>
                 <th className="py-3 px-2 font-semibold text-right">Total</th>
               </tr>
             </thead>
-            <tbody className="text-gray-800">
+            <tbody className="text-text-main">
               {items.map((item, i) => (
-                <tr key={i} className="border-b border-gray-200 last:border-0">
+                <tr key={i} className="border-b border-border-main last:border-0">
                   <td className="py-3 px-2">
                     <div className="font-semibold">{item.material.name}</div>
-                    <div className="text-xs text-gray-500">{item.material.category}</div>
+                    <div className="text-xs text-text-muted">{item.material.category}</div>
                   </td>
                   <td className="py-3 px-2 text-right">
                     {item.quantity} {item.material.unit}s
@@ -149,7 +149,7 @@ export default React.memo(function BOMExport({ params, layers }: BOMExportProps)
 
           <div className="flex justify-end pt-4 border-t-2 border-gray-300">
             <div className="text-right">
-              <p className="text-sm text-gray-500 uppercase tracking-wide font-semibold mb-1">Estimated Total Material Cost</p>
+              <p className="text-sm text-text-muted uppercase tracking-wide font-semibold mb-1">Estimated Total Material Cost</p>
               <p className="text-3xl font-bold text-soprema-blue">${totalCost.toFixed(2)}</p>
             </div>
           </div>

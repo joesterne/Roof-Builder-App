@@ -60,10 +60,10 @@ export default function LocationPicker({ onLocationSelect, initialLocation }: Lo
 
   if (!apiKey) {
     return (
-      <div className="bg-gray-100 p-6 flex flex-col items-center justify-center text-center rounded-md border border-gray-300 h-64">
+      <div className="bg-bg-page p-6 flex flex-col items-center justify-center text-center rounded-md border border-gray-300 h-64">
         <MapPin className="w-8 h-8 text-gray-400 mb-2" />
-        <p className="text-sm font-medium text-gray-700">Google Maps API Key Missing</p>
-        <p className="text-xs text-gray-500 mt-2 max-w-[250px]">
+        <p className="text-sm font-medium text-text-secondary">Google Maps API Key Missing</p>
+        <p className="text-xs text-text-muted mt-2 max-w-[250px]">
           Please add <code className="bg-gray-200 px-1 py-0.5 rounded">VITE_GOOGLE_MAPS_API_KEY</code> to your environment variables to use the location picker.
         </p>
       </div>
@@ -91,14 +91,14 @@ export default function LocationPicker({ onLocationSelect, initialLocation }: Lo
             <AdvancedMarker position={markerPosition} />
           </Map>
         </APIProvider>
-        <div className="absolute top-2 left-2 bg-white/90 backdrop-blur text-xs font-semibold px-2 py-1 rounded shadow-sm text-gray-700 pointer-events-none">
+        <div className="absolute top-2 left-2 bg-bg-panel/90 backdrop-blur text-xs font-semibold px-2 py-1 rounded shadow-sm text-text-secondary pointer-events-none">
           Click map to pin project location
         </div>
         
         {loading && (
-          <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex flex-col items-center justify-center z-10">
+          <div className="absolute inset-0 bg-bg-panel/60 backdrop-blur-sm flex flex-col items-center justify-center z-10">
             <Loader2 className="w-8 h-8 text-soprema-blue animate-spin mb-2" />
-            <p className="text-sm font-medium text-gray-800">Analyzing climate...</p>
+            <p className="text-sm font-medium text-text-main">Analyzing climate...</p>
           </div>
         )}
       </div>
@@ -111,13 +111,13 @@ export default function LocationPicker({ onLocationSelect, initialLocation }: Lo
           </div>
           
           <div className="space-y-3">
-            <p className="text-xs font-medium text-gray-700 flex items-center gap-1">
+            <p className="text-xs font-medium text-text-secondary flex items-center gap-1">
               <Info className="w-3.5 h-3.5" /> Suggested Materials:
             </p>
             {suggestions.map((sug, i) => (
-              <div key={i} className="bg-white p-3 rounded border border-blue-50 text-sm">
-                <div className="font-semibold text-soprema-black mb-1">{sug.material} <span className="text-xs text-gray-500 font-normal">({sug.category})</span></div>
-                <p className="text-xs text-gray-600 leading-relaxed">{sug.reason}</p>
+              <div key={i} className="bg-bg-panel p-3 rounded border border-blue-50 text-sm">
+                <div className="font-semibold text-soprema-black mb-1">{sug.material} <span className="text-xs text-text-muted font-normal">({sug.category})</span></div>
+                <p className="text-xs text-text-muted leading-relaxed">{sug.reason}</p>
               </div>
             ))}
           </div>

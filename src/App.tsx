@@ -4,7 +4,7 @@ import Visualizer from './components/Visualizer';
 import BOMExport from './components/BOMExport';
 import CodeAnalysis from './components/CodeAnalysis';
 import { RoofParams, Layer } from './types';
-import { Layers, FileText, ShieldAlert, Save, FolderOpen, RotateCcw, AlertTriangle, Share, X, Download } from 'lucide-react';
+import { Layers, FileText, ShieldAlert, Save, FolderOpen, RotateCcw, AlertTriangle, Share, X, Download, Moon, Sun } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import html2canvas from 'html2canvas';
 import { SOPREMA_MATERIALS } from './data';
@@ -70,11 +70,26 @@ export default function App() {
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showLoadModal, setShowLoadModal] = useState(false);
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [tempNotes, setTempNotes] = useState('');
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'name-asc' | 'name-desc'>('newest');
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('soprema_dark_mode');
+    return saved ? JSON.parse(saved) : false;
+  });
 
   const paramsRef = useRef(params);
   const layersRef = useRef(layers);
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('soprema_dark_mode', JSON.stringify(isDarkMode));
+  }, [isDarkMode]);
 
   useEffect(() => {
     paramsRef.current = params;
@@ -361,7 +376,7 @@ export default function App() {
   });
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden font-sans">
+    <div className="flex h-screen bg-bg-page overflow-hidden font-sans">
       <Toaster position="bottom-right" richColors />
       <Sidebar params={params} setParams={setParams} layers={layers} setLayers={setLayers} />
       
@@ -377,6 +392,17 @@ export default function App() {
             </div>
             
             <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className="text-xs flex items-center gap-1.5 font-bold uppercase tracking-wider bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded border border-gray-600 transition-colors"
+                title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              >
+                {isDarkMode ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+                {isDarkMode ? 'Light' : 'Dark'}
+              </button>
+
+              <div className="h-4 w-px bg-gray-700 mx-1"></div>
+
               <button 
                 onClick={toggleUnitSystem}
                 className="text-xs font-bold uppercase tracking-wider bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded border border-gray-600 transition-colors"
@@ -394,6 +420,16 @@ export default function App() {
                 <Download className="w-3.5 h-3.5" /> Export
               </button>
               
+              <div className="h-4 w-px bg-gray-700 mx-1"></div>
+              
+              <button 
+                onClick={() => { setTempNotes(params.projectNotes || ''); setShowNotesModal(true); }}
+                title="Project Notes"
+                className="text-xs flex items-center gap-1.5 font-bold uppercase tracking-wider bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded border border-gray-600 transition-colors"
+              >
+                <FileText className="w-3.5 h-3.5" /> Notes
+              </button>
+
               <div className="h-4 w-px bg-gray-700 mx-1"></div>
               
               <button 
@@ -467,23 +503,68 @@ export default function App() {
         </main>
       </div>
 
+      {/* Project Notes Modal */}
+      {showNotesModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-bg-panel rounded-lg shadow-2xl max-w-2xl w-full flex flex-col max-h-[80vh] overflow-hidden">
+            <div className="p-4 border-b border-border-main flex justify-between items-center bg-bg-panel-hover">
+              <h3 className="text-lg font-bold text-soprema-black flex items-center gap-2">
+                <FileText className="w-5 h-5 text-soprema-blue" /> Project Notes
+              </h3>
+              <button onClick={() => setShowNotesModal(false)} className="text-text-muted hover:text-text-main p-1 rounded-md hover:bg-gray-200 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              <p className="text-sm text-text-secondary mb-3">
+                Add client requirements, specific site conditions, or custom configuration notes here. These will be saved alongside your project configuration.
+              </p>
+              <textarea
+                value={tempNotes}
+                onChange={e => setTempNotes(e.target.value)}
+                className="w-full h-64 p-3 border border-border-main rounded-md focus:outline-none focus:ring-2 focus:ring-soprema-blue resize-y bg-bg-panel text-text-main"
+                placeholder="Enter long-form notes..."
+              ></textarea>
+            </div>
+            <div className="p-4 border-t border-border-main flex justify-end gap-3 bg-bg-panel-hover">
+              <button 
+                onClick={() => setShowNotesModal(false)}
+                className="px-4 py-2 text-sm font-medium text-text-secondary bg-bg-page hover:bg-gray-200 rounded-md transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  setParams(prev => ({ ...prev, projectNotes: tempNotes }));
+                  setShowNotesModal(false);
+                  toast.success('Project notes updated');
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-soprema-blue hover:bg-blue-600 rounded-md transition-colors shadow-sm"
+              >
+                Save Notes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Reset Confirmation Modal */}
       {showResetConfirm && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full p-6 text-gray-900 border border-gray-200">
+          <div className="bg-bg-panel rounded-lg shadow-2xl max-w-sm w-full p-6 text-text-main border border-border-main">
             <div className="flex items-center gap-3 mb-4">
               <div className="bg-red-100 p-2 rounded-full text-red-600">
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold">Reset Workspace?</h3>
             </div>
-            <p className="text-sm text-gray-600 mb-6">
+            <p className="text-sm text-text-muted mb-6">
               Are you sure you want to clear all layers and parameters? This action cannot be undone unless you have saved your project.
             </p>
             <div className="flex justify-end gap-3">
               <button 
                 onClick={() => setShowResetConfirm(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                className="px-4 py-2 text-sm font-medium text-text-secondary bg-bg-page hover:bg-gray-200 rounded-md transition-colors"
               >
                 Cancel
               </button>
@@ -501,8 +582,8 @@ export default function App() {
       {/* Load Project Modal */}
       {showLoadModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full flex flex-col max-h-[80vh] overflow-hidden">
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+          <div className="bg-bg-panel rounded-lg shadow-2xl max-w-2xl w-full flex flex-col max-h-[80vh] overflow-hidden">
+            <div className="p-4 border-b border-border-main flex justify-between items-center bg-bg-panel-hover">
               <h3 className="text-lg font-bold text-soprema-black flex items-center gap-2">
                 <FolderOpen className="w-5 h-5 text-soprema-blue" /> Saved Projects
               </h3>
@@ -517,7 +598,7 @@ export default function App() {
                   <option value="name-asc">Name (A-Z)</option>
                   <option value="name-desc">Name (Z-A)</option>
                 </select>
-                <button onClick={() => setShowLoadModal(false)} className="text-gray-500 hover:text-gray-900 p-1 rounded-md hover:bg-gray-200 transition-colors">
+                <button onClick={() => setShowLoadModal(false)} className="text-text-muted hover:text-text-main p-1 rounded-md hover:bg-gray-200 transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -525,18 +606,18 @@ export default function App() {
             
             <div className="p-4 overflow-y-auto flex-1 flex flex-col gap-3">
               {sortedProjects.map(proj => (
-                <div key={proj.id} className="border border-gray-200 rounded-lg p-3 flex justify-between items-center hover:bg-blue-50/50 transition-colors group">
+                <div key={proj.id} className="border border-border-main rounded-lg p-3 flex justify-between items-center hover:bg-blue-50/50 transition-colors group">
                   <div className="flex items-center gap-4">
                     {proj.thumbnail ? (
                       <img src={proj.thumbnail} alt="Preview" className="w-24 h-16 object-cover rounded border border-gray-300 shadow-sm" />
                     ) : (
-                      <div className="w-24 h-16 bg-gray-100 rounded border border-gray-300 flex items-center justify-center text-xs text-gray-400 font-medium shadow-sm">
+                      <div className="w-24 h-16 bg-bg-page rounded border border-gray-300 flex items-center justify-center text-xs text-gray-400 font-medium shadow-sm">
                         No Preview
                       </div>
                     )}
                     <div>
-                      <h4 className="font-bold text-gray-900 text-base">{proj.name}</h4>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <h4 className="font-bold text-text-main text-base">{proj.name}</h4>
+                      <p className="text-xs text-text-muted mt-1">
                         {new Date(proj.date).toLocaleString()} • <span className="font-medium text-soprema-blue">{proj.layers?.length || 0} Layers</span>
                       </p>
                     </div>
@@ -545,7 +626,7 @@ export default function App() {
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={() => duplicateProject(proj)}
-                      className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-soprema-blue hover:bg-blue-50 rounded border border-transparent hover:border-blue-200 transition-colors opacity-0 group-hover:opacity-100"
+                      className="px-3 py-1.5 text-xs font-medium text-text-muted hover:text-soprema-blue hover:bg-blue-50 rounded border border-transparent hover:border-blue-200 transition-colors opacity-0 group-hover:opacity-100"
                     >
                       Duplicate
                     </button>

@@ -57,7 +57,7 @@ export default React.memo(function CodeAnalysis({ layers, params }: CodeAnalysis
 
   if (!params.location) {
     return (
-      <div className="p-8 text-center text-gray-500">
+      <div className="p-8 text-center text-text-muted">
         <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-yellow-500" />
         <p>Please enter a location in Project Parameters to view local code requirements and material definitions.</p>
       </div>
@@ -66,7 +66,7 @@ export default React.memo(function CodeAnalysis({ layers, params }: CodeAnalysis
 
   if (layers.length === 0) {
     return (
-      <div className="p-8 text-center text-gray-500">
+      <div className="p-8 text-center text-text-muted">
         <p>Add materials to the assembly to generate analysis.</p>
       </div>
     );
@@ -94,18 +94,18 @@ export default React.memo(function CodeAnalysis({ layers, params }: CodeAnalysis
   if (!analysis) return null;
 
   return (
-    <div className="p-6 overflow-y-auto h-full bg-white text-gray-800">
+    <div className="p-6 overflow-y-auto h-full bg-bg-panel text-text-main">
       <div className="mb-8">
-        <h3 className="text-lg font-bold flex items-center gap-2 mb-3 text-soprema-black border-b border-gray-200 pb-2">
+        <h3 className="text-lg font-bold flex items-center gap-2 mb-3 text-soprema-black border-b border-border-main pb-2">
           <ShieldCheck className="w-5 h-5 text-soprema-blue" />
           System Overview & Local Regulations ({params.location})
         </h3>
-        <p className="text-sm leading-relaxed mb-4 text-gray-700">{analysis.systemOverview}</p>
+        <p className="text-sm leading-relaxed mb-4 text-text-secondary">{analysis.systemOverview}</p>
         
-        <h4 className="font-semibold text-sm mb-2 text-gray-900">Key Considerations:</h4>
+        <h4 className="font-semibold text-sm mb-2 text-text-main">Key Considerations:</h4>
         <ul className="space-y-2">
           {analysis.localRegulations.map((reg, i) => (
-            <li key={i} className="flex items-start gap-2 text-sm text-gray-600 bg-gray-50 p-3 rounded border border-gray-100">
+            <li key={i} className="flex items-start gap-2 text-sm text-text-muted bg-bg-panel-hover p-3 rounded border border-gray-100">
               <span className="text-soprema-blue mt-0.5">•</span>
               <span>{reg}</span>
             </li>
@@ -114,17 +114,17 @@ export default React.memo(function CodeAnalysis({ layers, params }: CodeAnalysis
       </div>
 
       <div>
-        <h3 className="text-lg font-bold flex items-center gap-2 mb-4 text-soprema-black border-b border-gray-200 pb-2">
+        <h3 className="text-lg font-bold flex items-center gap-2 mb-4 text-soprema-black border-b border-border-main pb-2">
           <Leaf className="w-5 h-5 text-soprema-green" />
           Material Definitions & Environmental Impact
         </h3>
         
         <div className="space-y-4">
           {analysis.materialDefinitions.map((def, i) => (
-            <div key={i} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <div key={i} className="bg-bg-panel-hover p-4 rounded-lg border border-border-main">
               <h4 className="font-bold text-soprema-blue mb-1">{def.material}</h4>
-              <p className="text-sm text-gray-700 mb-2"><span className="font-semibold text-gray-900">Definition:</span> {def.description}</p>
-              <p className="text-sm text-gray-700"><span className="font-semibold text-gray-900">Environmental Impact:</span> {def.environmentalImpact}</p>
+              <p className="text-sm text-text-secondary mb-2"><span className="font-semibold text-text-main">Definition:</span> {def.description}</p>
+              <p className="text-sm text-text-secondary"><span className="font-semibold text-text-main">Environmental Impact:</span> {def.environmentalImpact}</p>
             </div>
           ))}
         </div>
