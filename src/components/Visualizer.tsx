@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { motion, Reorder } from 'motion/react';
 import { Layer, RoofParams } from '../types';
-import { GripVertical, ZoomIn, ZoomOut, Trash2, ExternalLink, Info } from 'lucide-react';
+import { GripVertical, ZoomIn, ZoomOut, Trash2, ExternalLink, Info, CloudRain, Snowflake } from 'lucide-react';
+import WeatherOverlay from './WeatherOverlay';
 import { isValidOrder } from '../utils';
 import { toast } from 'sonner';
 
@@ -18,6 +19,10 @@ export default React.memo(function Visualizer({ layers, setLayers, params }: Vis
 
   const [hoveredLayer, setHoveredLayer] = useState<Layer | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [showWeatherControls, setShowWeatherControls] = useState(false);
+  const [weatherDisplayEnabled, setWeatherDisplayEnabled] = useState(false);
+  const [weatherType, setWeatherType] = useState<'rain' | 'snow'>('rain');
+  const [weatherIntensity, setWeatherIntensity] = useState(50);
 
   // Sync when props change from other tabs or sidebar
   useEffect(() => {
@@ -60,7 +65,9 @@ export default React.memo(function Visualizer({ layers, setLayers, params }: Vis
   const totalWeight = totalWeightPerSqFt * params.area;
 
   return (
-    <div id="visualizer-capture" className="w-full h-full min-h-[400px] flex items-center justify-center bg-bg-panel-hover overflow-hidden relative border-b border-border-main">
+    <div id="visualizer-capture" className="w-full h-full min-h-[400px] flex items-center justify-center bg-bg-panel-hover overflow-hidden relative border-b border-border-main" onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}>
+      
+      {weatherDisplayEnabled && <WeatherOverlay type={weatherType} intensity={weatherIntensity} />}
       
       {/* Drag and Drop Panel */}
       <div className="absolute left-6 top-6 w-72 bg-bg-panel/90 backdrop-blur-md rounded-xl shadow-lg border border-border-main flex flex-col z-10 max-h-[90%]">
@@ -173,8 +180,65 @@ export default React.memo(function Visualizer({ layers, setLayers, params }: Vis
         })}
       </div>
       
-      {/* Zoom Controls */}
+      {/* Weather Controls */}
+      <div className="absolute top-20 right-6 bg-bg-panel/90 backdrop-blur-md rounded-lg shadow-sm border border-border-main z-10 p-4 w-72">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-soprema-black text-sm uppercase tracking-wide flex items-center gap-2">
+            {weatherType === 'rain' ? <CloudRain className="w-4 h-4 text-soprema-blue" /> : <Snowflake className="w-4 h-4 text-blue-300" />}
+            Weather Simulation
+          </h3>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" className="sr-only peer" checked={showWeatherControls} onChange={(e) => setShowWeatherControls(e.target.checked)} />
+            <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-soprema-blue"></div>
+          </label>
+        </div>
+        
+        {showWeatherControls && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="flex bg-gray-200 dark:bg-gray-800 p-1 rounded-md">
+              <button
+                onClick={() => setWeatherType('rain')}
+                className={`flex-1 px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-sm transition-colors ${weatherType === 'rain' ? 'bg-white dark:bg-gray-600 text-soprema-blue shadow-sm' : 'text-text-muted hover:text-text-main'}`}
+              >
+                Rain
+              </button>
+              <button
+                onClick={() => setWeatherType('snow')}
+                className={`flex-1 px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-sm transition-colors ${weatherType === 'snow' ? 'bg-white dark:bg-gray-600 text-soprema-blue shadow-sm' : 'text-text-muted hover:text-text-main'}`}
+              >
+                Snow
+              </button>
+            </div>
+            
+            <div>
+              <div className="flex justify-between text-xs text-text-muted font-medium mb-1">
+                <span>Intensity</span>
+                <span>{weatherIntensity}%</span>
+              </div>
+              <input 
+                type="range" 
+                min="10" 
+                max="100" 
+                value={weatherIntensity}
+                onChange={(e) => setWeatherIntensity(parseInt(e.target.value))}
+                className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-soprema-blue dark:bg-gray-700"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Visualizer Header Toolbar */}
       <div className="absolute top-6 right-6 bg-bg-panel/90 backdrop-blur-md rounded-lg shadow-sm border border-border-main flex items-center z-10 p-1">
+        <button 
+          onClick={() => setWeatherDisplayEnabled(!weatherDisplayEnabled)}
+          className={`p-1.5 rounded-md transition-colors flex items-center gap-1.5 px-2 text-xs font-bold uppercase tracking-wider ${weatherDisplayEnabled ? 'bg-soprema-blue text-white' : 'text-text-secondary hover:bg-bg-page'}`}
+          title="Toggle Weather Display"
+        >
+          {weatherType === 'rain' ? <CloudRain className="w-4 h-4" /> : <Snowflake className="w-4 h-4" />}
+          Weather
+        </button>
+        <div className="w-px h-5 bg-border-main mx-1"></div>
         <button 
           onClick={handleZoomOut}
           disabled={zoom <= 0.4}

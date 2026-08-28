@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Reorder } from 'motion/react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { RoofParams, Layer, Category, Material } from '../types';
 import { SOPREMA_MATERIALS } from '../data';
 import { Plus, Trash2, Settings, List, MapPin, Search, X, ExternalLink, ChevronUp, ChevronDown, GripVertical, Calculator } from 'lucide-react';
+import ProjectStatistics from './ProjectStatistics';
 import LocationPicker from './LocationPicker';
 import { getCategoryPriority, parseThickness, parseRValue } from '../utils';
 
@@ -161,9 +161,24 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              Roof Size ({params.unitSystem === 'metric' ? 'Sq M' : 'Sq Ft'})
-            </label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-sm font-medium text-text-secondary">
+                Roof Size ({params.unitSystem === 'metric' ? 'Sq M' : 'Sq Ft'})
+              </label>
+              <button 
+                onClick={() => {
+                  if (params.unitSystem === 'imperial') {
+                    setParams({ ...params, unitSystem: 'metric', area: Math.round(params.area * 0.092903) });
+                  } else {
+                    setParams({ ...params, unitSystem: 'imperial', area: Math.round(params.area * 10.7639) });
+                  }
+                }}
+                className="text-xs bg-bg-panel hover:bg-bg-panel-hover border border-border-main px-2 py-0.5 rounded text-text-muted hover:text-text-main transition-colors"
+                title="Toggle unit system"
+              >
+                Switch to {params.unitSystem === 'imperial' ? 'Metric' : 'Imperial'}
+              </button>
+            </div>
             <input 
               type="number" 
               value={params.area || ''}
@@ -207,56 +222,7 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
         </div>
       </div>
 
-      <div className="p-6 border-b border-border-main bg-bg-panel-hover">
-        <h2 className="text-lg font-bold text-soprema-black flex items-center gap-2 mb-4">
-          <Calculator className="w-5 h-5 text-soprema-blue" />
-          Project Statistics
-        </h2>
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="bg-bg-panel p-3 rounded-md border border-border-main shadow-sm flex flex-col justify-center items-center text-center">
-            <span className="text-xs text-text-muted font-medium">Est. Cost / Sq Ft</span>
-            <span className="text-lg font-bold text-text-main">${stats.totalCostPerSqFt.toFixed(2)}</span>
-          </div>
-          <div className="bg-bg-panel p-3 rounded-md border border-border-main shadow-sm flex flex-col justify-center items-center text-center">
-            <span className="text-xs text-text-muted font-medium">Total Thickness</span>
-            <span className="text-lg font-bold text-text-main">{stats.totalThickness.toFixed(2)}"</span>
-          </div>
-          <div className="col-span-2 bg-bg-panel p-3 rounded-md border border-border-main shadow-sm flex flex-col justify-center items-center text-center">
-            <span className="text-xs text-text-muted font-medium">Avg Layer R-Value</span>
-            <span className="text-lg font-bold text-text-main">{stats.avgRValue.toFixed(1)}</span>
-          </div>
-        </div>
-
-        {stats.compositionData.length > 0 && (
-          <div className="bg-bg-panel p-3 rounded-md border border-border-main shadow-sm flex flex-col">
-            <span className="text-xs text-text-muted font-medium mb-2 text-center">Cost Composition</span>
-            <div className="h-48 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={stats.compositionData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={30}
-                    outerRadius={50}
-                    paddingAngle={2}
-                    dataKey="cost"
-                  >
-                    {stats.compositionData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip 
-                    formatter={(value: number) => `$${value.toFixed(2)}`}
-                    contentStyle={{ backgroundColor: 'var(--bg-panel)', borderColor: 'var(--border-main)', color: 'var(--text-main)', fontSize: '12px' }}
-                  />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: 'var(--text-main)' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
-      </div>
+      <ProjectStatistics stats={stats} unitSystem={params.unitSystem} />
 
       <div className="p-6 flex-1 flex flex-col">
         <h2 className="text-lg font-bold text-soprema-black flex items-center gap-2 mb-4">
@@ -473,7 +439,11 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-text-secondary">Coverage</span>
-                      <span className="text-sm font-bold text-text-main">{compareList[0].coveragePerUnit} sq ft / {compareList[0].unit}</span>
+                      <span className="text-sm font-bold text-text-main">
+                        {params.unitSystem === 'metric' 
+                          ? `${(compareList[0].coveragePerUnit * 0.092903).toFixed(1)} sq m` 
+                          : `${compareList[0].coveragePerUnit} sq ft`} / {compareList[0].unit}
+                      </span>
                     </div>
                   </div>
 
@@ -519,7 +489,11 @@ export default React.memo(function Sidebar({ params, setParams, layers, setLayer
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-text-secondary">Coverage</span>
-                      <span className="text-sm font-bold text-text-main">{compareList[1].coveragePerUnit} sq ft / {compareList[1].unit}</span>
+                      <span className="text-sm font-bold text-text-main">
+                        {params.unitSystem === 'metric' 
+                          ? `${(compareList[1].coveragePerUnit * 0.092903).toFixed(1)} sq m` 
+                          : `${compareList[1].coveragePerUnit} sq ft`} / {compareList[1].unit}
+                      </span>
                     </div>
                   </div>
 

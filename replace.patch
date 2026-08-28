@@ -1,0 +1,180 @@
+--- src/App.tsx
++++ src/App.tsx
+@@ -499,103 +499,31 @@
+         </main>
+       </div>
+ 
+-      {/* Project Notes Modal */}
+-      {showNotesModal && (
+-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+-          <div className="bg-bg-panel rounded-lg shadow-2xl max-w-2xl w-full flex flex-col max-h-[80vh] overflow-hidden">
+-            <div className="p-4 border-b border-border-main flex justify-between items-center bg-bg-panel-hover">
+-              <h3 className="text-lg font-bold text-soprema-black flex items-center gap-2">
+-                <FileText className="w-5 h-5 text-soprema-blue" /> Project Notes
+-              </h3>
+-              <button onClick={() => setShowNotesModal(false)} className="text-text-muted hover:text-text-main p-1 rounded-md hover:bg-gray-200 transition-colors">
+-                <X className="w-5 h-5" />
+-              </button>
+-            </div>
+-            <div className="p-4">
+-              <p className="text-sm text-text-secondary mb-3">
+-                Add client requirements, specific site conditions, or custom configuration notes here. These will be saved alongside your project configuration.
+-              </p>
+-              <textarea
+-                value={tempNotes}
+-                onChange={e => setTempNotes(e.target.value)}
+-                className="w-full h-64 p-3 border border-border-main rounded-md focus:outline-none focus:ring-2 focus:ring-soprema-blue resize-y bg-bg-panel text-text-main"
+-                placeholder="Enter long-form notes..."
+-              ></textarea>
+-            </div>
+-            <div className="p-4 border-t border-border-main flex justify-end gap-3 bg-bg-panel-hover">
+-              <button 
+-                onClick={() => setShowNotesModal(false)}
+-                className="px-4 py-2 text-sm font-medium text-text-secondary bg-bg-page hover:bg-gray-200 rounded-md transition-colors"
+-              >
+-                Cancel
+-              </button>
+-              <button 
+-                onClick={() => {
+-                  setParams(prev => ({ ...prev, projectNotes: tempNotes }));
+-                  setShowNotesModal(false);
+-                  toast.success('Project notes updated');
+-                }}
+-                className="px-4 py-2 text-sm font-medium text-white bg-soprema-blue hover:bg-blue-600 rounded-md transition-colors shadow-sm"
+-              >
+-                Save Notes
+-              </button>
+-            </div>
+-          </div>
+-        </div>
++      {showNotesModal && (
++        <NotesModal
++          tempNotes={tempNotes}
++          setTempNotes={setTempNotes}
++          onClose={() => setShowNotesModal(false)}
++          onSave={() => {
++            setParams(prev => ({ ...prev, projectNotes: tempNotes }));
++            setShowNotesModal(false);
++            toast.success('Project notes updated');
++          }}
++        />
+       )}
+ 
+-      {/* Reset Confirmation Modal */}
+-      {showResetConfirm && (
+-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+-          <div className="bg-bg-panel rounded-lg shadow-2xl max-w-sm w-full p-6 text-text-main border border-border-main">
+-            <div className="flex items-center gap-3 mb-4">
+-              <div className="bg-red-100 p-2 rounded-full text-red-600">
+-                <AlertTriangle className="w-6 h-6" />
+-              </div>
+-              <h3 className="text-lg font-bold">Reset Workspace?</h3>
+-            </div>
+-            <p className="text-sm text-text-muted mb-6">
+-              Are you sure you want to clear all layers and parameters? This action cannot be undone unless you have saved your project.
+-            </p>
+-            <div className="flex justify-end gap-3">
+-              <button 
+-                onClick={() => setShowResetConfirm(false)}
+-                className="px-4 py-2 text-sm font-medium text-text-secondary bg-bg-page hover:bg-gray-200 rounded-md transition-colors"
+-              >
+-                Cancel
+-              </button>
+-              <button 
+-                onClick={confirmReset}
+-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+-              >
+-                Reset
+-              </button>
+-            </div>
+-          </div>
+-        </div>
++      {showResetConfirm && (
++        <ResetConfirmModal
++          onClose={() => setShowResetConfirm(false)}
++          onConfirm={confirmReset}
++        />
+       )}
+ 
+-      {/* Load Project Modal */}
+-      {showLoadModal && (
+-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+-          <div className="bg-bg-panel rounded-lg shadow-2xl max-w-2xl w-full flex flex-col max-h-[80vh] overflow-hidden">
+-            <div className="p-4 border-b border-border-main flex justify-between items-center bg-bg-panel-hover">
+-              <h3 className="text-lg font-bold text-soprema-black flex items-center gap-2">
+-                <FolderOpen className="w-5 h-5 text-soprema-blue" /> Saved Projects
+-              </h3>
+-              <div className="flex items-center gap-4">
+-                <select
+-                  value={sortOrder}
+-                  onChange={(e) => setSortOrder(e.target.value as any)}
+-                  className="text-sm border border-gray-300 rounded px-2 py-1 outline-none focus:border-soprema-blue"
+-                >
+-                  <option value="newest">Newest First</option>
+-                  <option value="oldest">Oldest First</option>
+-                  <option value="name-asc">Name (A-Z)</option>
+-                  <option value="name-desc">Name (Z-A)</option>
+-                </select>
+-                <button onClick={() => setShowLoadModal(false)} className="text-text-muted hover:text-text-main p-1 rounded-md hover:bg-gray-200 transition-colors">
+-                  <X className="w-5 h-5" />
+-                </button>
+-              </div>
+-            </div>
+-            
+-            <div className="p-4 overflow-y-auto flex-1 flex flex-col gap-3">
+-              {sortedProjects.map(proj => (
+-                <div key={proj.id} className="border border-border-main rounded-lg p-3 flex justify-between items-center hover:bg-blue-50/50 transition-colors group">
+-                  <div className="flex items-center gap-4">
+-                    {proj.thumbnail ? (
+-                      <img src={proj.thumbnail} alt="Preview" className="w-24 h-16 object-cover rounded border border-gray-300 shadow-sm" />
+-                    ) : (
+-                      <div className="w-24 h-16 bg-bg-page rounded border border-gray-300 flex items-center justify-center text-xs text-gray-400 font-medium shadow-sm">
+-                        No Preview
+-                      </div>
+-                    )}
+-                    <div>
+-                      <h4 className="font-bold text-text-main text-base">{proj.name}</h4>
+-                      <p className="text-xs text-text-muted mt-1">
+-                        {new Date(proj.date).toLocaleString()} • <span className="font-medium text-soprema-blue">{proj.layers?.length || 0} Layers</span>
+-                      </p>
+-                    </div>
+-                  </div>
+-                  
+-                  <div className="flex items-center gap-2">
+-                    <button 
+-                      onClick={() => duplicateProject(proj)}
+-                      className="px-3 py-1.5 text-xs font-medium text-text-muted hover:text-soprema-blue hover:bg-blue-50 rounded border border-transparent hover:border-blue-200 transition-colors opacity-0 group-hover:opacity-100"
+-                    >
+-                      Duplicate
+-                    </button>
+-                    <button 
+-                      onClick={() => deleteProject(proj.id)}
+-                      className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded border border-transparent hover:border-red-200 transition-colors opacity-0 group-hover:opacity-100"
+-                    >
+-                      Delete
+-                    </button>
+-                    <button 
+-                      onClick={() => loadProject(proj)}
+-                      className="px-4 py-1.5 text-sm font-medium text-white bg-soprema-blue hover:bg-blue-600 rounded shadow-sm transition-colors"
+-                    >
+-                      Load
+-                    </button>
+-                  </div>
+-                </div>
+-              ))}
+-            </div>
+-          </div>
+-        </div>
++      {showLoadModal && (
++        <LoadProjectModal
++          sortOrder={sortOrder}
++          setSortOrder={setSortOrder}
++          sortedProjects={sortedProjects}
++          onClose={() => setShowLoadModal(false)}
++          onDuplicate={duplicateProject}
++          onDelete={deleteProject}
++          onLoad={loadProject}
++        />
+       )}
+     </div>
+   );

@@ -46,3 +46,12 @@ export interface CodeAnalysis {
     environmentalImpact: string;
   }[];
 }
+
+export interface SavedProject {
+  id: string;
+  name: string;
+  date: string;
+  params: RoofParams;
+  layers: Layer[];
+  thumbnail: string;
+}

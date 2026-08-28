@@ -3,20 +3,21 @@ import Sidebar from './components/Sidebar';
 import Visualizer from './components/Visualizer';
 import BOMExport from './components/BOMExport';
 import CodeAnalysis from './components/CodeAnalysis';
-import { RoofParams, Layer } from './types';
-import { Layers, FileText, ShieldAlert, Save, FolderOpen, RotateCcw, AlertTriangle, Share, X, Download, Moon, Sun } from 'lucide-react';
+import { RoofParams, Layer, SavedProject } from './types';
+import { Layers, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import html2canvas from 'html2canvas';
 import { SOPREMA_MATERIALS } from './data';
+import Header from './components/Header';
+import NotesModal from './components/modals/NotesModal';
+import ResetConfirmModal from './components/modals/ResetConfirmModal';
+import LoadProjectModal from './components/modals/LoadProjectModal';
+import QRCodeModal from './components/modals/QRCodeModal';
+import AuthModal from './components/modals/AuthModal';
+import { auth, db } from './lib/firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { collection, query, where, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
-interface SavedProject {
-  id: string;
-  name: string;
-  date: string;
-  params: RoofParams;
-  layers: Layer[];
-  thumbnail: string;
-}
 
 // Security: Helper to sanitize and re-hydrate project data to prevent XSS and prototype pollution
 function sanitizeProjectData(decoded: any): { params: RoofParams, layers: Layer[] } | null {
@@ -70,6 +71,10 @@ export default function App() {
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showLoadModal, setShowLoadModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [showQRCodeModal, setShowQRCodeModal] = useState(false);
+  const [shareUrlToGenerate, setShareUrlToGenerate] = useState('');
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [tempNotes, setTempNotes] = useState('');
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
@@ -78,6 +83,14 @@ export default function App() {
     const saved = localStorage.getItem('soprema_dark_mode');
     return saved ? JSON.parse(saved) : false;
   });
+
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const paramsRef = useRef(params);
   const layersRef = useRef(layers);
@@ -231,7 +244,7 @@ export default function App() {
     toast.success('Project saved successfully!');
   }, [params, layers]);
 
-  const handleLoadClick = useCallback(() => {
+  const handleLoadClick = useCallback(async () => {
     const existingStr = localStorage.getItem('soprema_projects');
     const existing: SavedProject[] = existingStr ? JSON.parse(existingStr) : [];
     
@@ -273,11 +286,22 @@ export default function App() {
   }, []);
 
   const deleteProject = useCallback((id: string) => {
-    const updated = savedProjects.filter(p => p.id !== id);
-    setSavedProjects(updated);
-    localStorage.setItem('soprema_projects', JSON.stringify(updated));
-    if (updated.length === 0) {
-      setShowLoadModal(false);
+    if (user) {
+      deleteDoc(doc(db, 'projects', id)).then(() => {
+        const updated = savedProjects.filter(p => p.id !== id);
+        setSavedProjects(updated);
+        toast.success('Project deleted from cloud.');
+        if (updated.length === 0) setShowLoadModal(false);
+      }).catch(err => {
+        console.error(err);
+        toast.error('Failed to delete cloud project.');
+      });
+    } else {
+      const updated = savedProjects.filter(p => p.id !== id);
+      setSavedProjects(updated);
+      localStorage.setItem('soprema_projects', JSON.stringify(updated));
+      toast.success('Project deleted locally.');
+      if (updated.length === 0) setShowLoadModal(false);
     }
   }, [savedProjects]);
 
@@ -335,6 +359,20 @@ export default function App() {
     setTimeout(() => setStatusMessage(''), 2000);
   }, [params, layers]);
 
+
+  const handleShareQR = useCallback(() => {
+    try {
+      const stateStr = encodeURIComponent(btoa(JSON.stringify({ params, layers })));
+      const shareUrl = `${window.location.origin}${window.location.pathname}?state=${stateStr}`;
+      setShareUrlToGenerate(shareUrl);
+      setShowQRCodeModal(true);
+    } catch (e) {
+      console.error('Error generating share QR link:', e);
+      setStatusMessage('Failed to create QR link');
+      setTimeout(() => setStatusMessage(''), 2000);
+    }
+  }, [params, layers]);
+
   const handleShare = useCallback(() => {
     try {
       const stateStr = encodeURIComponent(btoa(JSON.stringify({ params, layers })));
@@ -382,118 +420,23 @@ export default function App() {
       
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header */}
-        <header className="bg-soprema-black text-white p-4 flex justify-between items-center shrink-0">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-soprema-blue rounded-md flex items-center justify-center font-bold text-lg">
-                R
-              </div>
-              <h1 className="text-xl font-bold tracking-wider hidden md:block">ROOF SYSTEM BUILDER</h1>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                className="text-xs flex items-center gap-1.5 font-bold uppercase tracking-wider bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded border border-gray-600 transition-colors"
-                title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-              >
-                {isDarkMode ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-                {isDarkMode ? 'Light' : 'Dark'}
-              </button>
-
-              <div className="h-4 w-px bg-gray-700 mx-1"></div>
-
-              <button 
-                onClick={toggleUnitSystem}
-                className="text-xs font-bold uppercase tracking-wider bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded border border-gray-600 transition-colors"
-              >
-                Units: {params.unitSystem === 'imperial' ? 'Imperial (ft)' : 'Metric (m)'}
-              </button>
-              
-              <div className="h-4 w-px bg-gray-700 mx-1"></div>
-              
-              <button 
-                onClick={handleExport}
-                title="Export Project to JSON"
-                className="text-xs flex items-center gap-1.5 font-bold uppercase tracking-wider bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded border border-gray-600 transition-colors"
-              >
-                <Download className="w-3.5 h-3.5" /> Export
-              </button>
-              
-              <div className="h-4 w-px bg-gray-700 mx-1"></div>
-              
-              <button 
-                onClick={() => { setTempNotes(params.projectNotes || ''); setShowNotesModal(true); }}
-                title="Project Notes"
-                className="text-xs flex items-center gap-1.5 font-bold uppercase tracking-wider bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded border border-gray-600 transition-colors"
-              >
-                <FileText className="w-3.5 h-3.5" /> Notes
-              </button>
-
-              <div className="h-4 w-px bg-gray-700 mx-1"></div>
-              
-              <button 
-                onClick={handleShare}
-                title="Share Project"
-                className="text-xs flex items-center gap-1.5 font-bold uppercase tracking-wider bg-soprema-blue hover:bg-blue-600 px-3 py-1.5 rounded border border-blue-500 transition-colors"
-              >
-                <Share className="w-3.5 h-3.5" /> Share
-              </button>
-              
-              <button 
-                onClick={handleSave}
-                title="Save Project"
-                className="text-xs flex items-center gap-1.5 font-bold uppercase tracking-wider bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded border border-gray-600 transition-colors"
-              >
-                <Save className="w-3.5 h-3.5" /> Save
-              </button>
-              <button 
-                onClick={handleLoadClick}
-                title="Load Project"
-                className="text-xs flex items-center gap-1.5 font-bold uppercase tracking-wider bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded border border-gray-600 transition-colors"
-              >
-                <FolderOpen className="w-3.5 h-3.5" /> Load
-              </button>
-              <button 
-                onClick={() => setShowResetConfirm(true)}
-                title="Reset Workspace"
-                className="text-xs flex items-center gap-1.5 font-bold uppercase tracking-wider bg-red-900/50 hover:bg-red-800/80 text-red-100 px-3 py-1.5 rounded border border-red-800 transition-colors ml-1"
-              >
-                <RotateCcw className="w-3.5 h-3.5" /> Reset
-              </button>
-
-              {statusMessage && (
-                <span className="text-xs font-medium text-soprema-blue animate-pulse ml-2">
-                  {statusMessage}
-                </span>
-              )}
-            </div>
-          </div>
-          
-          <div className="flex bg-gray-800 rounded-lg p-1">
-            <button 
-              onClick={() => setActiveTab('visualizer')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'visualizer' ? 'bg-soprema-blue text-white' : 'text-gray-300 hover:text-white'}`}
-            >
-              <Layers className="w-4 h-4" />
-              Visualizer
-            </button>
-            <button 
-              onClick={() => setActiveTab('bom')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'bom' ? 'bg-soprema-blue text-white' : 'text-gray-300 hover:text-white'}`}
-            >
-              <FileText className="w-4 h-4" />
-              Bill of Materials
-            </button>
-            <button 
-              onClick={() => setActiveTab('code')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'code' ? 'bg-soprema-blue text-white' : 'text-gray-300 hover:text-white'}`}
-            >
-              <ShieldAlert className="w-4 h-4" />
-              Code & Specs
-            </button>
-          </div>
-        </header>
+        <Header
+          isDarkMode={isDarkMode}
+          setIsDarkMode={setIsDarkMode}
+          params={params}
+          toggleUnitSystem={toggleUnitSystem}
+          handleExport={handleExport}
+          openNotesModal={() => { setTempNotes(params.projectNotes || ''); setShowNotesModal(true); }}
+          handleShare={handleShare}
+          handleShareQR={handleShareQR}
+          handleSave={handleSave}
+          handleLoadClick={handleLoadClick}
+          openResetConfirm={() => setShowResetConfirm(true)}
+          statusMessage={statusMessage}
+          user={user}
+          onAuthClick={() => setShowAuthModal(true)}
+          onSignOut={() => signOut(auth)}
+        />
         
         {/* Main Content Area */}
         <main className="flex-1 overflow-hidden relative">
@@ -503,151 +446,54 @@ export default function App() {
         </main>
       </div>
 
-      {/* Project Notes Modal */}
+
+      {showQRCodeModal && (
+        <QRCodeModal
+          url={shareUrlToGenerate}
+          onClose={() => setShowQRCodeModal(false)}
+        />
+      )}
+      
       {showNotesModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-bg-panel rounded-lg shadow-2xl max-w-2xl w-full flex flex-col max-h-[80vh] overflow-hidden">
-            <div className="p-4 border-b border-border-main flex justify-between items-center bg-bg-panel-hover">
-              <h3 className="text-lg font-bold text-soprema-black flex items-center gap-2">
-                <FileText className="w-5 h-5 text-soprema-blue" /> Project Notes
-              </h3>
-              <button onClick={() => setShowNotesModal(false)} className="text-text-muted hover:text-text-main p-1 rounded-md hover:bg-gray-200 transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-4">
-              <p className="text-sm text-text-secondary mb-3">
-                Add client requirements, specific site conditions, or custom configuration notes here. These will be saved alongside your project configuration.
-              </p>
-              <textarea
-                value={tempNotes}
-                onChange={e => setTempNotes(e.target.value)}
-                className="w-full h-64 p-3 border border-border-main rounded-md focus:outline-none focus:ring-2 focus:ring-soprema-blue resize-y bg-bg-panel text-text-main"
-                placeholder="Enter long-form notes..."
-              ></textarea>
-            </div>
-            <div className="p-4 border-t border-border-main flex justify-end gap-3 bg-bg-panel-hover">
-              <button 
-                onClick={() => setShowNotesModal(false)}
-                className="px-4 py-2 text-sm font-medium text-text-secondary bg-bg-page hover:bg-gray-200 rounded-md transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={() => {
-                  setParams(prev => ({ ...prev, projectNotes: tempNotes }));
-                  setShowNotesModal(false);
-                  toast.success('Project notes updated');
-                }}
-                className="px-4 py-2 text-sm font-medium text-white bg-soprema-blue hover:bg-blue-600 rounded-md transition-colors shadow-sm"
-              >
-                Save Notes
-              </button>
-            </div>
-          </div>
-        </div>
+        <NotesModal
+          tempNotes={tempNotes}
+          setTempNotes={setTempNotes}
+          onClose={() => setShowNotesModal(false)}
+          onSave={() => {
+            setParams(prev => ({ ...prev, projectNotes: tempNotes }));
+            setShowNotesModal(false);
+            toast.success('Project notes updated');
+          }}
+        />
       )}
 
       {/* Reset Confirmation Modal */}
       {showResetConfirm && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-bg-panel rounded-lg shadow-2xl max-w-sm w-full p-6 text-text-main border border-border-main">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-red-100 p-2 rounded-full text-red-600">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold">Reset Workspace?</h3>
-            </div>
-            <p className="text-sm text-text-muted mb-6">
-              Are you sure you want to clear all layers and parameters? This action cannot be undone unless you have saved your project.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button 
-                onClick={() => setShowResetConfirm(false)}
-                className="px-4 py-2 text-sm font-medium text-text-secondary bg-bg-page hover:bg-gray-200 rounded-md transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={confirmReset}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
-              >
-                Reset
-              </button>
-            </div>
-          </div>
-        </div>
+        <ResetConfirmModal
+          onClose={() => setShowResetConfirm(false)}
+          onConfirm={confirmReset}
+        />
       )}
 
       {/* Load Project Modal */}
+      
+      {showAuthModal && (
+        <AuthModal
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={() => setShowAuthModal(false)}
+        />
+      )}
+
       {showLoadModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-bg-panel rounded-lg shadow-2xl max-w-2xl w-full flex flex-col max-h-[80vh] overflow-hidden">
-            <div className="p-4 border-b border-border-main flex justify-between items-center bg-bg-panel-hover">
-              <h3 className="text-lg font-bold text-soprema-black flex items-center gap-2">
-                <FolderOpen className="w-5 h-5 text-soprema-blue" /> Saved Projects
-              </h3>
-              <div className="flex items-center gap-4">
-                <select
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value as any)}
-                  className="text-sm border border-gray-300 rounded px-2 py-1 outline-none focus:border-soprema-blue"
-                >
-                  <option value="newest">Newest First</option>
-                  <option value="oldest">Oldest First</option>
-                  <option value="name-asc">Name (A-Z)</option>
-                  <option value="name-desc">Name (Z-A)</option>
-                </select>
-                <button onClick={() => setShowLoadModal(false)} className="text-text-muted hover:text-text-main p-1 rounded-md hover:bg-gray-200 transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-            
-            <div className="p-4 overflow-y-auto flex-1 flex flex-col gap-3">
-              {sortedProjects.map(proj => (
-                <div key={proj.id} className="border border-border-main rounded-lg p-3 flex justify-between items-center hover:bg-blue-50/50 transition-colors group">
-                  <div className="flex items-center gap-4">
-                    {proj.thumbnail ? (
-                      <img src={proj.thumbnail} alt="Preview" className="w-24 h-16 object-cover rounded border border-gray-300 shadow-sm" />
-                    ) : (
-                      <div className="w-24 h-16 bg-bg-page rounded border border-gray-300 flex items-center justify-center text-xs text-gray-400 font-medium shadow-sm">
-                        No Preview
-                      </div>
-                    )}
-                    <div>
-                      <h4 className="font-bold text-text-main text-base">{proj.name}</h4>
-                      <p className="text-xs text-text-muted mt-1">
-                        {new Date(proj.date).toLocaleString()} • <span className="font-medium text-soprema-blue">{proj.layers?.length || 0} Layers</span>
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => duplicateProject(proj)}
-                      className="px-3 py-1.5 text-xs font-medium text-text-muted hover:text-soprema-blue hover:bg-blue-50 rounded border border-transparent hover:border-blue-200 transition-colors opacity-0 group-hover:opacity-100"
-                    >
-                      Duplicate
-                    </button>
-                    <button 
-                      onClick={() => deleteProject(proj.id)}
-                      className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded border border-transparent hover:border-red-200 transition-colors opacity-0 group-hover:opacity-100"
-                    >
-                      Delete
-                    </button>
-                    <button 
-                      onClick={() => loadProject(proj)}
-                      className="px-4 py-1.5 text-sm font-medium text-white bg-soprema-blue hover:bg-blue-600 rounded shadow-sm transition-colors"
-                    >
-                      Load
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <LoadProjectModal
+          sortOrder={sortOrder}
+          setSortOrder={setSortOrder}
+          sortedProjects={sortedProjects}
+          onClose={() => setShowLoadModal(false)}
+          onDuplicate={duplicateProject}
+          onDelete={deleteProject}
+          onLoad={loadProject}
+        />
       )}
     </div>
   );
