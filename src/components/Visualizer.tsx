@@ -4,6 +4,7 @@ import { Layer, RoofParams } from '../types';
 import { GripVertical, ZoomIn, ZoomOut, Trash2, ExternalLink, Info, CloudRain, Snowflake } from 'lucide-react';
 import WeatherOverlay from './WeatherOverlay';
 import { isValidOrder } from '../utils';
+import { useSecretCode } from '../hooks/useSecretCode';
 import { toast } from 'sonner';
 
 interface VisualizerProps {
@@ -21,8 +22,25 @@ export default React.memo(function Visualizer({ layers, setLayers, params }: Vis
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [showWeatherControls, setShowWeatherControls] = useState(false);
   const [weatherDisplayEnabled, setWeatherDisplayEnabled] = useState(false);
-  const [weatherType, setWeatherType] = useState<'rain' | 'snow'>('rain');
+  const [weatherType, setWeatherType] = useState<'rain' | 'snow' | 'cats' | 'party'>('rain');
   const [weatherIntensity, setWeatherIntensity] = useState(50);
+
+  // Easter Eggs
+  const isDoABarrelRoll = useSecretCode('barrel');
+  const isCatsAndDogs = useSecretCode('meow');
+  const isPartyMode = useSecretCode('party');
+
+  useEffect(() => {
+    if (isCatsAndDogs) {
+      setWeatherType('cats');
+      setWeatherDisplayEnabled(true);
+    } else if (isPartyMode) {
+      setWeatherType('party');
+      setWeatherDisplayEnabled(true);
+    } else {
+      setWeatherType('rain'); // reset
+    }
+  }, [isCatsAndDogs, isPartyMode]);
 
   // Sync when props change from other tabs or sidebar
   useEffect(() => {
@@ -65,7 +83,7 @@ export default React.memo(function Visualizer({ layers, setLayers, params }: Vis
   const totalWeight = totalWeightPerSqFt * params.area;
 
   return (
-    <div id="visualizer-capture" className="w-full h-full min-h-[400px] flex items-center justify-center bg-bg-panel-hover overflow-hidden relative border-b border-border-main" onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}>
+    <div id="visualizer-capture" className={`w-full h-full min-h-[400px] flex items-center justify-center bg-bg-panel-hover overflow-hidden relative border-b border-border-main transition-transform duration-1000 ${isDoABarrelRoll ? 'rotate-180 scale-50' : ''}`} onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}>
       
       {weatherDisplayEnabled && <WeatherOverlay type={weatherType} intensity={weatherIntensity} />}
       
@@ -184,7 +202,7 @@ export default React.memo(function Visualizer({ layers, setLayers, params }: Vis
       <div className="absolute top-20 right-6 bg-bg-panel/90 backdrop-blur-md rounded-lg shadow-sm border border-border-main z-10 p-4 w-72">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-soprema-black text-sm uppercase tracking-wide flex items-center gap-2">
-            {weatherType === 'rain' ? <CloudRain className="w-4 h-4 text-soprema-blue" /> : <Snowflake className="w-4 h-4 text-blue-300" />}
+            {weatherType === 'cats' ? <span className="text-sm">🐱</span> : (weatherType === 'party' ? <span className="text-sm">🎉</span> : (weatherType === 'rain' ? <CloudRain className="w-4 h-4 text-soprema-blue" /> : <Snowflake className="w-4 h-4 text-blue-300" />))}
             Weather Simulation
           </h3>
           <label className="relative inline-flex items-center cursor-pointer">
@@ -235,7 +253,7 @@ export default React.memo(function Visualizer({ layers, setLayers, params }: Vis
           className={`p-1.5 rounded-md transition-colors flex items-center gap-1.5 px-2 text-xs font-bold uppercase tracking-wider ${weatherDisplayEnabled ? 'bg-soprema-blue text-white' : 'text-text-secondary hover:bg-bg-page'}`}
           title="Toggle Weather Display"
         >
-          {weatherType === 'rain' ? <CloudRain className="w-4 h-4" /> : <Snowflake className="w-4 h-4" />}
+          {weatherType === 'cats' ? '🐱' : (weatherType === 'party' ? '🎉' : (weatherType === 'rain' ? <CloudRain className="w-4 h-4" /> : <Snowflake className="w-4 h-4" />))}
           Weather
         </button>
         <div className="w-px h-5 bg-border-main mx-1"></div>
