@@ -15,6 +15,7 @@ import LoadProjectModal from './components/modals/LoadProjectModal';
 import QRCodeModal from './components/modals/QRCodeModal';
 import AuthModal from './components/modals/AuthModal';
 import { auth, db } from './lib/firebase';
+import { useProjectSync } from './hooks/useProjectSync';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, query, where, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
@@ -73,12 +74,12 @@ export default function App() {
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const { savedProjects, saveProject, deleteProject, fetchProjects } = useProjectSync(user);
   const [showQRCodeModal, setShowQRCodeModal] = useState(false);
   const [shareUrlToGenerate, setShareUrlToGenerate] = useState('');
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [tempNotes, setTempNotes] = useState('');
-  const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'name-asc' | 'name-desc'>('newest');
+    const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'name-asc' | 'name-desc'>('newest');
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('soprema_dark_mode');
     return saved ? JSON.parse(saved) : false;
@@ -245,33 +246,9 @@ export default function App() {
   }, [params, layers]);
 
   const handleLoadClick = useCallback(async () => {
-    const existingStr = localStorage.getItem('soprema_projects');
-    const existing: SavedProject[] = existingStr ? JSON.parse(existingStr) : [];
-    
-    // Check old save format for backward compatibility
-    const oldSave = localStorage.getItem('soprema-roof-config');
-    if (oldSave && existing.length === 0) {
-       try {
-         const parsed = JSON.parse(oldSave);
-         existing.push({
-           id: 'legacy',
-           name: 'Legacy Project',
-           date: new Date().toISOString(),
-           params: parsed.params,
-           layers: parsed.layers,
-           thumbnail: ''
-         });
-       } catch (e) {}
-    }
-    
-    if (existing.length === 0) {
-      toast.info('No saved projects found.');
-      return;
-    }
-    
-    setSavedProjects(existing.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    await fetchProjects();
     setShowLoadModal(true);
-  }, []);
+  }, [fetchProjects]);
 
   const loadProject = useCallback((project: SavedProject) => {
     const sanitized = sanitizeProjectData(project);
@@ -285,57 +262,17 @@ export default function App() {
     }
   }, []);
 
-  const deleteProject = useCallback((id: string) => {
-    if (user) {
-      deleteDoc(doc(db, 'projects', id)).then(() => {
-        const updated = savedProjects.filter(p => p.id !== id);
-        setSavedProjects(updated);
-        toast.success('Project deleted from cloud.');
-        if (updated.length === 0) setShowLoadModal(false);
-      }).catch(err => {
-        console.error(err);
-        toast.error('Failed to delete cloud project.');
-      });
-    } else {
-      const updated = savedProjects.filter(p => p.id !== id);
-      setSavedProjects(updated);
-      localStorage.setItem('soprema_projects', JSON.stringify(updated));
-      toast.success('Project deleted locally.');
-      if (updated.length === 0) setShowLoadModal(false);
-    }
-  }, [savedProjects]);
 
-  const duplicateProject = useCallback((project: SavedProject) => {
+
+  const duplicateProject = useCallback(async (project: SavedProject) => {
     const duplicated: SavedProject = {
       ...project,
       id: Date.now().toString(),
       name: `${project.name} (Copy)`,
       date: new Date().toISOString()
     };
-    const existingStr = localStorage.getItem('soprema_projects');
-    const existing: SavedProject[] = existingStr ? JSON.parse(existingStr) : [];
-    
-    // Check old save format for backward compatibility
-    const oldSave = localStorage.getItem('soprema-roof-config');
-    if (oldSave && existing.length === 0) {
-       try {
-         const parsed = JSON.parse(oldSave);
-         existing.push({
-           id: 'legacy',
-           name: 'Legacy Project',
-           date: new Date().toISOString(),
-           params: parsed.params,
-           layers: parsed.layers,
-           thumbnail: ''
-         });
-       } catch (e) {}
-    }
-    
-    existing.push(duplicated);
-    localStorage.setItem('soprema_projects', JSON.stringify(existing));
-    setSavedProjects(existing.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-    toast.success(`Project "${project.name}" duplicated!`);
-  }, []);
+    await saveProject(duplicated);
+  }, [saveProject]);
 
   const handleExport = useCallback(() => {
     const data = {
@@ -491,7 +428,7 @@ export default function App() {
           sortedProjects={sortedProjects}
           onClose={() => setShowLoadModal(false)}
           onDuplicate={duplicateProject}
-          onDelete={deleteProject}
+          onDelete={handleDeleteProject}
           onLoad={loadProject}
         />
       )}
