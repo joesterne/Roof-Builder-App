@@ -1,10 +1,11 @@
 # Soprema Roof System Builder
 
-A professional, interactive 3D web application for visualizing, designing, and calculating commercial roofing assemblies. 
+A professional, interactive 3D web application for visualizing, designing, and calculating commercial roofing assemblies.
 
 ## 🌟 Key Features
 
 * **Interactive 3D Visualizer:** Build roof systems layer by layer with a dynamic, rotatable 3D stack. Features drag-and-drop reordering, zoom controls, and detailed material tooltips.
+* **Bulk Assembly Management:** Select multiple layers at once to quickly duplicate or delete them, drastically speeding up the design of complex, repetitive roof structures.
 * **Dynamic Weather Simulation:** Toggle real-time rain and snow particle effects directly within the visualizer environment, complete with adjustable intensity sliders.
 * **Cloud Synchronization:** Secure user authentication and project cloud-saving powered by Firebase Auth and Firestore. Access your roof designs from any device.
 * **Real-time Calculations:** Instantly calculate total estimated weight based on assembly layers, area size, and unit systems (Imperial/Metric).
@@ -22,14 +23,17 @@ A professional, interactive 3D web application for visualizing, designing, and c
 ## 📁 Project Structure
 
 * `/src/components/Visualizer.tsx`: The core 3D interactive rendering engine and drag-and-drop interface.
+* `/src/components/Sidebar.tsx`: The main assembly management interface, featuring bulk selection, reordering, and material comparison.
 * `/src/components/WeatherOverlay.tsx`: HTML5 Canvas implementation of the rain and snow particle systems.
 * `/src/components/Header.tsx`: Application toolbar containing tools for exporting, saving, unit toggling, and authentication.
+* `/src/hooks/useProjectSync.ts`: Custom React hook managing the complex synchronization logic between local storage and Firebase Cloud Firestore.
 * `/src/lib/firebase.ts`: Firebase configuration and initialization logic.
 * `/src/types.ts`: TypeScript interfaces for materials, layers, and roof parameters.
 
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 * Node.js (v18 or higher)
 * A Firebase Project (for Auth and Firestore)
 
@@ -59,4 +63,5 @@ A professional, interactive 3D web application for visualizing, designing, and c
    The application will be available at `http://localhost:3000`.
 
 ## 🔒 Security Note
+
 Firebase configuration variables (`VITE_FIREBASE_*`) are safe to expose in client-side code as they are used to identify your project to Google servers. However, ensure that your Firestore Security Rules (`firestore.rules`) are properly configured to prevent unauthorized data access, and restrict your Firebase API Key usage to your production domains within the Google Cloud Console.
