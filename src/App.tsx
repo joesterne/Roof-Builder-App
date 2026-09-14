@@ -428,7 +428,7 @@ export default function App() {
           sortedProjects={sortedProjects}
           onClose={() => setShowLoadModal(false)}
           onDuplicate={duplicateProject}
-          onDelete={handleDeleteProject}
+          onDelete={deleteProject}
           onLoad={loadProject}
         />
       )}
