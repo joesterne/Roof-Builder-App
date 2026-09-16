@@ -1,436 +1,446 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import Sidebar from './components/Sidebar';
-import Visualizer from './components/Visualizer';
-import BOMExport from './components/BOMExport';
-import CodeAnalysis from './components/CodeAnalysis';
-import { RoofParams, Layer, SavedProject } from './types';
-import { Layers, ShieldAlert, AlertTriangle } from 'lucide-react';
-import { Toaster, toast } from 'sonner';
-import html2canvas from 'html2canvas';
-import { SOPREMA_MATERIALS } from './data';
-import Header from './components/Header';
-import NotesModal from './components/modals/NotesModal';
-import ResetConfirmModal from './components/modals/ResetConfirmModal';
-import LoadProjectModal from './components/modals/LoadProjectModal';
-import QRCodeModal from './components/modals/QRCodeModal';
-import AuthModal from './components/modals/AuthModal';
-import { auth, db } from './lib/firebase';
-import { useProjectSync } from './hooks/useProjectSync';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, query, where, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import React, { useEffect, useRef, useState } from "react";
+import { Toaster, toast } from "sonner";
+import { onAuthStateChanged, signOut, type User } from "firebase/auth";
+import Sidebar from "./components/Sidebar";
+import Visualizer from "./components/Visualizer";
+import BOMExport from "./components/BOMExport";
+import CodeAnalysis from "./components/CodeAnalysis";
+import Header from "./components/Header";
+import LoadProjectModal from "./components/modals/LoadProjectModal";
+import ResetConfirmModal from "./components/modals/ResetConfirmModal";
+import AuthModal from "./components/modals/AuthModal";
+import QRCodeModal from "./components/modals/QRCodeModal";
+import { auth, firebaseConfigured } from "./lib/firebase";
+import {
+  DEFAULT_PARAMS,
+  parseProject,
+  encodeProject,
+  decodeProject,
+} from "./lib/project";
+import { diagramDataUri } from "./lib/diagram";
+import { useProjectSync } from "./hooks/useProjectSync";
+import { areaUnit, displayArea, formatNumber } from "./utils";
+import type { RoofParams, Layer, SavedProject } from "./types";
 
-
-// Security: Helper to sanitize and re-hydrate project data to prevent XSS and prototype pollution
-function sanitizeProjectData(decoded: any): { params: RoofParams, layers: Layer[] } | null {
-  if (!decoded || !decoded.params || !Array.isArray(decoded.layers)) {
-    return null;
-  }
-
-  const safeParams: RoofParams = {
-    area: typeof decoded.params.area === 'number' ? decoded.params.area : 5000,
-    pitch: typeof decoded.params.pitch === 'number' ? decoded.params.pitch : 2,
-    location: typeof decoded.params.location === 'string' ? decoded.params.location.slice(0, 100) : '',
-    wasteFactor: typeof decoded.params.wasteFactor === 'number' ? decoded.params.wasteFactor : 0.1,
-    unitSystem: decoded.params.unitSystem === 'metric' ? 'metric' : 'imperial',
-    projectNotes: typeof decoded.params.projectNotes === 'string' ? decoded.params.projectNotes.slice(0, 500) : undefined,
-    coordinates: decoded.params.coordinates && typeof decoded.params.coordinates.lat === 'number' && typeof decoded.params.coordinates.lng === 'number' 
-      ? { lat: decoded.params.coordinates.lat, lng: decoded.params.coordinates.lng } 
-      : undefined,
-    climateData: decoded.params.climateData && typeof decoded.params.climateData.temperature === 'number' && typeof decoded.params.climateData.conditions === 'string'
-      ? { temperature: decoded.params.climateData.temperature, conditions: String(decoded.params.climateData.conditions).slice(0, 50) }
-      : undefined
-  };
-
-  const safeLayers: Layer[] = [];
-  decoded.layers.forEach((layer: any) => {
-    if (layer && layer.material && typeof layer.material.id === 'string') {
-      const knownMaterial = SOPREMA_MATERIALS.find(m => m.id === layer.material.id);
-      if (knownMaterial) {
-        safeLayers.push({
-          id: typeof layer.id === 'string' ? layer.id : Math.random().toString(),
-          material: knownMaterial,
-          order: typeof layer.order === 'number' ? layer.order : safeLayers.length
-        });
-      }
-    }
-  });
-
-  return { params: safeParams, layers: safeLayers };
-}
-
-export default function App() {
-  const [params, setParams] = useState<RoofParams>({
-    area: 5000,
-    pitch: 2,
-    location: '',
-    wasteFactor: 0.1,
-    unitSystem: 'imperial',
-  });
-
-  const [layers, setLayers] = useState<Layer[]>([]);
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'bom' | 'code'>('visualizer');
-  const [statusMessage, setStatusMessage] = useState<string>('');
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [showLoadModal, setShowLoadModal] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const { savedProjects, saveProject, deleteProject, fetchProjects } = useProjectSync(user);
-  const [showQRCodeModal, setShowQRCodeModal] = useState(false);
-  const [shareUrlToGenerate, setShareUrlToGenerate] = useState('');
-  const [showNotesModal, setShowNotesModal] = useState(false);
-  const [tempNotes, setTempNotes] = useState('');
-    const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'name-asc' | 'name-desc'>('newest');
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem('soprema_dark_mode');
-    return saved ? JSON.parse(saved) : false;
-  });
-
-
+function Dialog({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
+    ref.current?.showModal();
   }, []);
-
-  const paramsRef = useRef(params);
-  const layersRef = useRef(layers);
-
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    localStorage.setItem('soprema_dark_mode', JSON.stringify(isDarkMode));
-  }, [isDarkMode]);
-
-  useEffect(() => {
-    paramsRef.current = params;
-    layersRef.current = layers;
-  }, [params, layers]);
-
-  // Auto-save effect
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (layersRef.current.length > 0) {
-        const data = {
-          params: paramsRef.current,
-          layers: layersRef.current,
-          timestamp: Date.now()
-        };
-        localStorage.setItem('soprema_autosave', JSON.stringify(data));
-      }
-    }, 30000); // 30 seconds
-    return () => clearInterval(interval);
-  }, []);
-
-  // Load shared state from URL on mount
-  useEffect(() => {
-    const query = new URLSearchParams(window.location.search);
-    const stateParam = query.get('state');
-    if (stateParam) {
-      try {
-        const decoded = JSON.parse(atob(decodeURIComponent(stateParam)));
-        const sanitized = sanitizeProjectData(decoded);
-        if (sanitized) {
-          setParams(sanitized.params);
-          setLayers(sanitized.layers);
-          setStatusMessage('Shared project loaded!');
-          setTimeout(() => setStatusMessage(''), 3000);
-        }
-      } catch (e) {
-        console.error('Failed to parse shared state from URL', e);
-      }
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } else {
-      // Try to load autosave
-      const autosaveStr = localStorage.getItem('soprema_autosave');
-      if (autosaveStr) {
-        try {
-          const parsed = JSON.parse(autosaveStr);
-          const sanitized = sanitizeProjectData(parsed);
-          if (sanitized && sanitized.layers.length > 0) {
-            setParams(sanitized.params);
-            setLayers(sanitized.layers);
-            setStatusMessage('Autosave recovered');
-            setTimeout(() => setStatusMessage(''), 3000);
-          }
-        } catch (e) {
-          console.error('Failed to parse autosave', e);
-        }
-      }
-    }
-  }, []);
-
-  const confirmReset = useCallback(() => {
-    setLayers([]);
-    setParams({
-      area: 5000,
-      pitch: 2,
-      location: '',
-      wasteFactor: 0.1,
-      unitSystem: 'imperial',
-      projectNotes: ''
-    });
-    localStorage.removeItem('soprema_autosave');
-    setShowResetConfirm(false);
-    setStatusMessage('Workspace Reset');
-    setTimeout(() => setStatusMessage(''), 2000);
-  }, []);
-
-  const toggleUnitSystem = useCallback(() => {
-    setParams(prev => {
-      if (prev.unitSystem === 'imperial') {
-        // Imperial (Sq Ft) to Metric (Sq M): multiply by 0.092903
-        return { ...prev, unitSystem: 'metric', area: Math.round(prev.area * 0.092903) };
-      } else {
-        // Metric (Sq M) to Imperial (Sq Ft): multiply by 10.7639
-        return { ...prev, unitSystem: 'imperial', area: Math.round(prev.area * 10.7639) };
-      }
-    });
-  }, []);
-
-  const handleSave = useCallback(async () => {
-    const name = prompt('Enter a name for this configuration:', 'My Roof Config');
-    if (!name) return;
-
-    let thumbnail = '';
-    const visualizerEl = document.getElementById('visualizer-capture');
-    
-    if (visualizerEl) {
-      const toastId = toast.loading('Capturing visualizer preview...');
-      try {
-        const canvas = await html2canvas(visualizerEl, { scale: 0.5 });
-        thumbnail = canvas.toDataURL('image/jpeg', 0.6);
-        toast.dismiss(toastId);
-      } catch (e) {
-        console.error('Failed to capture thumbnail', e);
-        toast.dismiss(toastId);
-      }
-    }
-
-    const newProject: SavedProject = {
-      id: Date.now().toString(),
-      name,
-      date: new Date().toISOString(),
-      params,
-      layers,
-      thumbnail
-    };
-
-    const existingStr = localStorage.getItem('soprema_projects');
-    const existing: SavedProject[] = existingStr ? JSON.parse(existingStr) : [];
-    
-    // Check old save format for backward compatibility
-    const oldSave = localStorage.getItem('soprema-roof-config');
-    if (oldSave && existing.length === 0) {
-       try {
-         const parsed = JSON.parse(oldSave);
-         existing.push({
-           id: 'legacy',
-           name: 'Legacy Project',
-           date: new Date().toISOString(),
-           params: parsed.params,
-           layers: parsed.layers,
-           thumbnail: ''
-         });
-       } catch (e) {}
-    }
-    
-    existing.push(newProject);
-    localStorage.setItem('soprema_projects', JSON.stringify(existing));
-    
-    toast.success('Project saved successfully!');
-  }, [params, layers]);
-
-  const handleLoadClick = useCallback(async () => {
-    await fetchProjects();
-    setShowLoadModal(true);
-  }, [fetchProjects]);
-
-  const loadProject = useCallback((project: SavedProject) => {
-    const sanitized = sanitizeProjectData(project);
-    if (sanitized) {
-      setParams(sanitized.params);
-      setLayers(sanitized.layers);
-      setShowLoadModal(false);
-      toast.success(`Project "${project.name}" loaded!`);
-    } else {
-      toast.error('Failed to load project: invalid data.');
-    }
-  }, []);
-
-
-
-  const duplicateProject = useCallback(async (project: SavedProject) => {
-    const duplicated: SavedProject = {
-      ...project,
-      id: Date.now().toString(),
-      name: `${project.name} (Copy)`,
-      date: new Date().toISOString()
-    };
-    await saveProject(duplicated);
-  }, [saveProject]);
-
-  const handleExport = useCallback(() => {
-    const data = {
-      params,
-      layers,
-      version: '1.0',
-      exportedAt: new Date().toISOString()
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `soprema-project-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    setStatusMessage('Project Exported');
-    setTimeout(() => setStatusMessage(''), 2000);
-  }, [params, layers]);
-
-
-  const handleShareQR = useCallback(() => {
-    try {
-      const stateStr = encodeURIComponent(btoa(JSON.stringify({ params, layers })));
-      const shareUrl = `${window.location.origin}${window.location.pathname}?state=${stateStr}`;
-      setShareUrlToGenerate(shareUrl);
-      setShowQRCodeModal(true);
-    } catch (e) {
-      console.error('Error generating share QR link:', e);
-      setStatusMessage('Failed to create QR link');
-      setTimeout(() => setStatusMessage(''), 2000);
-    }
-  }, [params, layers]);
-
-  const handleShare = useCallback(() => {
-    try {
-      const stateStr = encodeURIComponent(btoa(JSON.stringify({ params, layers })));
-      // Ensure the URL matches the current domain so the hash/path works properly
-      const shareUrl = `${window.location.origin}${window.location.pathname}?state=${stateStr}`;
-      
-      const subject = encodeURIComponent("Soprema Roof Configuration Project");
-      
-      let body = `Project Summary:\n`;
-      body += `- Area: ${params.area} sq ${params.unitSystem === 'imperial' ? 'ft' : 'm'}\n`;
-      body += `- Location: ${params.location || 'Not specified'}\n`;
-      body += `- Pitch: ${params.pitch}/12\n\n`;
-      
-      body += `System Layers (${layers.length}):\n`;
-      [...layers].sort((a,b) => a.order - b.order).forEach((l, i) => {
-        body += `${i + 1}. ${l.material.name} (${l.material.category})\n`;
-      });
-      
-      body += `\nYou can view and edit this configuration here:\n${shareUrl}\n\n`;
-      body += `Note: If you need the full Bill of Materials, please find the exported PDF attached.\n`;
-      
-      window.location.href = `mailto:?subject=${subject}&body=${encodeURIComponent(body)}`;
-      
-      setStatusMessage('Mail client opened');
-      setTimeout(() => setStatusMessage(''), 2000);
-    } catch (e) {
-      console.error('Error generating share link:', e);
-      setStatusMessage('Failed to create share link');
-      setTimeout(() => setStatusMessage(''), 2000);
-    }
-  }, [params, layers]);
-
-  const sortedProjects = [...savedProjects].sort((a, b) => {
-    if (sortOrder === 'newest') return new Date(b.date).getTime() - new Date(a.date).getTime();
-    if (sortOrder === 'oldest') return new Date(a.date).getTime() - new Date(b.date).getTime();
-    if (sortOrder === 'name-asc') return a.name.localeCompare(b.name);
-    if (sortOrder === 'name-desc') return b.name.localeCompare(a.name);
-    return 0;
-  });
-
   return (
-    <div className="flex h-screen bg-bg-page overflow-hidden font-sans">
-      <Toaster position="bottom-right" richColors />
-      <Sidebar params={params} setParams={setParams} layers={layers} setLayers={setLayers} />
-      
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Header */}
-        <Header
-          isDarkMode={isDarkMode}
-          setIsDarkMode={setIsDarkMode}
-          params={params}
-          toggleUnitSystem={toggleUnitSystem}
-          handleExport={handleExport}
-          openNotesModal={() => { setTempNotes(params.projectNotes || ''); setShowNotesModal(true); }}
-          handleShare={handleShare}
-          handleShareQR={handleShareQR}
-          handleSave={handleSave}
-          handleLoadClick={handleLoadClick}
-          openResetConfirm={() => setShowResetConfirm(true)}
-          statusMessage={statusMessage}
-          user={user}
-          onAuthClick={() => setShowAuthModal(true)}
-          onSignOut={() => signOut(auth)}
-        />
-        
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-hidden relative">
-          {activeTab === 'visualizer' && <Visualizer layers={layers} setLayers={setLayers} params={params} />}
-          {activeTab === 'bom' && <BOMExport params={params} layers={layers} />}
-          {activeTab === 'code' && <CodeAnalysis params={params} layers={layers} />}
-        </main>
+    <dialog
+      ref={ref}
+      onCancel={onClose}
+      className="m-auto w-[min(92vw,600px)] rounded-xl border border-border-main bg-bg-panel p-6 text-text-main shadow-2xl backdrop:bg-black/50"
+    >
+      <div className="mb-5 flex items-center justify-between">
+        <h2 className="text-xl font-bold">{title}</h2>
+        <button onClick={onClose} aria-label="Close dialog">
+          ✕
+        </button>
       </div>
-
-
-      {showQRCodeModal && (
-        <QRCodeModal
-          url={shareUrlToGenerate}
-          onClose={() => setShowQRCodeModal(false)}
-        />
+      {children}
+    </dialog>
+  );
+}
+export default function App() {
+  const [params, setParams] = useState<RoofParams>({ ...DEFAULT_PARAMS });
+  const [layers, setLayers] = useState<Layer[]>([]);
+  const [tab, setTab] = useState<"visualizer" | "bom" | "code">("visualizer");
+  const [modal, setModal] = useState<
+    "" | "save" | "load" | "reset" | "share" | "auth" | "qr"
+  >("");
+  const [name, setName] = useState("My roof project");
+  const [shareUrl, setShareUrl] = useState("");
+  const [sort, setSort] = useState("newest");
+  const [sidebar, setSidebar] = useState(false);
+  const [ready, setReady] = useState(false);
+  const initialized = useRef(false);
+  const preserveAutosave = useRef(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [dark, setDark] = useState(() => {
+    try { return localStorage.getItem('soprema_dark_mode') === 'true'; }
+    catch { return false; }
+  });
+  const { savedProjects, saveProject, deleteProject, fetchProjects } =
+    useProjectSync(user);
+  useEffect(() => {
+    if (auth) return onAuthStateChanged(auth, setUser);
+  }, []);
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    try { localStorage.setItem('soprema_dark_mode', String(dark)); } catch { /* Preference storage is optional. */ }
+  }, [dark]);
+  useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+    try {
+      const hash = new URLSearchParams(location.hash.slice(1)).get("project");
+      const old = new URLSearchParams(location.search).get("state");
+      const saved = localStorage.getItem("soprema_autosave");
+      const project = hash
+        ? decodeProject(hash)
+        : old
+          ? parseProject(JSON.parse(atob(old)))
+          : saved
+            ? parseProject(JSON.parse(saved))
+            : null;
+      if (project) {
+        setParams(project.params);
+        setLayers(project.layers);
+        if (hash || old) toast.success("Shared project loaded");
+      }
+      if (new URLSearchParams(location.search).get("export") === "pdf")
+        setTab("bom");
+      if (hash || old) history.replaceState({}, '', location.pathname);
+    } catch (e) {
+      preserveAutosave.current = true;
+      toast.error(
+        `Could not restore project: ${e instanceof Error ? e.message : "Invalid data"}`,
+      );
+    }
+    setReady(true);
+  }, []);
+  useEffect(() => {
+    if (!ready) return;
+    // Leave a failed recovery untouched until the user starts or loads another project.
+    if (preserveAutosave.current && layers.length === 0 && JSON.stringify(params) === JSON.stringify(DEFAULT_PARAMS)) return;
+    preserveAutosave.current = false;
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(
+          "soprema_autosave",
+          JSON.stringify({ schemaVersion: 2, params, layers }),
+        );
+      } catch {
+        toast.error("Autosave unavailable. Export JSON to keep a backup.");
+      }
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [params, layers, ready]);
+  const error = (e: unknown) =>
+    toast.error(e instanceof Error ? e.message : "Operation failed");
+  const load = (p: SavedProject) => {
+    try {
+      const safe = parseProject(p);
+      setParams({ ...safe.params, name: p.name });
+      setLayers(safe.layers);
+      setModal("");
+      toast.success("Project loaded");
+    } catch (e) {
+      error(e);
+    }
+  };
+  const share = (qr = false) => {
+    try {
+      const url = `${location.origin}${location.pathname}#project=${encodeProject(params, layers)}`;
+      if (qr && url.length > 1800) throw new Error('This project is too large for a readable QR code. Use Share to copy the link or export JSON.');
+      setShareUrl(url);
+      setModal(qr ? "qr" : "share");
+    } catch (e) {
+      error(e);
+    }
+  };
+  const exportJson = () => {
+    const blob = new Blob(
+      [JSON.stringify({ schemaVersion: 2, params, layers }, null, 2)],
+      { type: "application/json" },
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "roof-project.json";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const pdfUrl = shareUrl.replace("#project=", "?export=pdf#project=");
+  const summary = `${params.name || "Roof project"}\nArea: ${formatNumber(displayArea(params.area, params.unitSystem))} ${areaUnit(params.unitSystem)} (${params.areaBasis || "plan"})\nPitch: ${params.pitch}:12\nLocation: ${params.location || "Unspecified"}\nLayers, bottom to top:\n${[
+    ...layers,
+  ]
+    .sort((a, b) => a.order - b.order)
+    .map((l, i) => `${i + 1}. ${l.material.name}`)
+    .join(
+      "\n",
+    )}\n\nOpen project: ${shareUrl}\nOpen bill of materials and download PDF: ${pdfUrl}`;
+  const sorted = [...savedProjects].sort((a, b) =>
+    sort === "name-asc"
+      ? a.name.localeCompare(b.name)
+      : sort === "name-desc"
+        ? b.name.localeCompare(a.name)
+        : sort === "oldest"
+          ? a.date.localeCompare(b.date)
+          : b.date.localeCompare(a.date),
+  );
+  return (
+    <div className="flex h-dvh flex-col bg-bg-page text-text-main font-sans">
+      <Toaster richColors position="bottom-right" />
+      <Header
+        isDarkMode={dark}
+        setIsDarkMode={setDark}
+        params={params}
+        toggleUnitSystem={() =>
+          setParams((p) => ({
+            ...p,
+            unitSystem: p.unitSystem === "metric" ? "imperial" : "metric",
+          }))
+        }
+        handleExport={exportJson}
+        openNotesModal={() => { setSidebar(true); requestAnimationFrame(() => document.getElementById("project-notes")?.focus()); }}
+        handleShare={() => share()}
+        handleShareQR={() => share(true)}
+        handleSave={() => {
+          setName(params.name || "My roof project");
+          setModal("save");
+        }}
+        handleLoadClick={() => {
+          void fetchProjects();
+          setModal("load");
+        }}
+        openResetConfirm={() => setModal("reset")}
+        statusMessage=""
+        user={user}
+        onAuthClick={() =>
+          firebaseConfigured
+            ? setModal("auth")
+            : toast.info(
+                "Cloud sign-in is not configured. Save and Load work on this device.",
+              )
+        }
+        onSignOut={() => {
+          if (auth) void signOut(auth);
+        }}
+      />
+      <div className="flex min-h-0 flex-1">
+        <div
+          className={`${sidebar ? "fixed inset-0 z-40 flex bg-bg-panel" : "hidden"} w-full lg:static lg:flex lg:w-[360px] lg:shrink-0`}
+        >
+          <Sidebar
+            params={params}
+            setParams={setParams}
+            layers={layers}
+            setLayers={setLayers}
+          />
+          {sidebar && (
+            <button
+              className="absolute right-2 top-2 rounded bg-soprema-blue p-2 text-white lg:hidden"
+              onClick={() => setSidebar(false)}
+            >
+              Done
+            </button>
+          )}
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <nav
+            aria-label="Workspace views"
+            className="flex flex-wrap gap-2 border-b border-border-main bg-bg-panel px-5 py-3"
+          >
+            <button
+              className="rounded border p-2 text-sm lg:hidden"
+              onClick={() => setSidebar(!sidebar)}
+            >
+              Materials & parameters
+            </button>
+            {(["visualizer", "bom", "code"] as const).map((t) => (
+              <button
+                key={t}
+                aria-current={tab === t ? "page" : undefined}
+                onClick={() => setTab(t)}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold ${tab === t ? "bg-soprema-blue text-white" : "text-text-muted hover:bg-bg-panel-hover"}`}
+              >
+                {t === "visualizer"
+                  ? "Assembly studio"
+                  : t === "bom"
+                    ? "Bill of materials"
+                    : "Location & requirements"}
+              </button>
+            ))}
+            <label className="ml-auto cursor-pointer rounded border border-border-main px-3 py-2 text-sm">
+              Import JSON
+              <input
+                aria-label="Import project JSON"
+                type="file"
+                accept=".json,application/json"
+                className="sr-only"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    if (file.size > 2_000_000)
+                      throw Error("Project file is too large");
+                    const p = parseProject(JSON.parse(await file.text()));
+                    setParams(p.params);
+                    setLayers(p.layers);
+                    toast.success("Project imported");
+                  } catch (err) {
+                    error(err);
+                  }
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </nav>
+          <main className="relative min-h-0 flex-1 overflow-auto">
+            {tab === "visualizer" ? (
+              <Visualizer
+                params={params}
+                setParams={setParams}
+                layers={layers}
+                setLayers={setLayers}
+              />
+            ) : tab === "bom" ? (
+              <BOMExport
+                params={params}
+                setParams={setParams}
+                layers={layers}
+                setLayers={setLayers}
+              />
+            ) : (
+              <CodeAnalysis
+                params={params}
+                setParams={setParams}
+                layers={layers}
+              />
+            )}
+          </main>
+        </div>
+      </div>
+      {modal === "save" && (
+        <Dialog title="Save project" onClose={() => setModal("")}>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const named = { ...params, name: name.trim() };
+              const project: SavedProject = {
+                schemaVersion: 2,
+                id: crypto.randomUUID(),
+                name: name.trim(),
+                date: new Date().toISOString(),
+                params: named,
+                layers,
+                thumbnail: diagramDataUri(named, layers),
+              };
+              if (await saveProject(project)) {
+                setParams(named);
+                setModal("");
+              }
+            }}
+          >
+            <label className="block text-sm">
+              Project name
+              <input
+                autoFocus
+                required
+                maxLength={120}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="my-2 w-full rounded border border-border-main bg-bg-panel p-3"
+              />
+            </label>
+            <p className="mb-4 text-sm text-text-muted">
+              Saves materials, notes, parameters, and a preview of this assembly
+              on this device.
+            </p>
+            <button className="rounded bg-soprema-blue px-5 py-2 text-white">
+              Save project
+            </button>
+          </form>
+        </Dialog>
       )}
-      
-      {showNotesModal && (
-        <NotesModal
-          tempNotes={tempNotes}
-          setTempNotes={setTempNotes}
-          onClose={() => setShowNotesModal(false)}
-          onSave={() => {
-            setParams(prev => ({ ...prev, projectNotes: tempNotes }));
-            setShowNotesModal(false);
-            toast.success('Project notes updated');
+      {modal === "share" && (
+        <Dialog title="Share project" onClose={() => setModal("")}>
+          <p className="mb-3 text-sm text-text-muted">
+            The link includes your project notes and client details. Anyone with
+            it can open a copy and download its PDF.
+          </p>
+          <label className="text-sm">
+            Project link
+            <textarea
+              readOnly
+              value={shareUrl}
+              className="my-2 h-24 w-full rounded border border-border-main bg-bg-page p-3"
+              onFocus={(e) => e.target.select()}
+            />
+          </label>
+          <div className="flex flex-wrap gap-3">
+            <button
+              className="rounded bg-soprema-blue px-4 py-2 text-white"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(shareUrl);
+                  toast.success("Link copied");
+                } catch {
+                  toast.info("Select and copy the link above.");
+                }
+              }}
+            >
+              Copy link
+            </button>
+            <a
+              className="rounded border px-4 py-2"
+              href={`mailto:?subject=${encodeURIComponent(params.name || "Roof project")}&body=${encodeURIComponent(summary)}`}
+            >
+              Prepare email
+            </a>
+            <a
+              className="rounded border px-4 py-2"
+              href={pdfUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open PDF export
+            </a>
+          </div>
+        </Dialog>
+      )}
+      {modal === "load" && (
+        <LoadProjectModal
+          sortOrder={sort}
+          setSortOrder={setSort}
+          sortedProjects={sorted}
+          onClose={() => setModal("")}
+          onLoad={load}
+          onDelete={(id) => {
+            if (confirm("Delete this saved project?")) void deleteProject(id);
+          }}
+          onDuplicate={(p) => {
+            void saveProject({
+              ...p,
+              id: crypto.randomUUID(),
+              name: `${p.name} (Copy)`,
+              date: new Date().toISOString(),
+            });
           }}
         />
       )}
-
-      {/* Reset Confirmation Modal */}
-      {showResetConfirm && (
+      {modal === "reset" && (
         <ResetConfirmModal
-          onClose={() => setShowResetConfirm(false)}
-          onConfirm={confirmReset}
+          onClose={() => setModal("")}
+          onConfirm={() => {
+            setParams({ ...DEFAULT_PARAMS });
+            setLayers([]);
+            setTab("visualizer");
+            setModal("");
+            history.replaceState({}, "", location.pathname);
+            toast.success("Workspace reset. Saved projects are retained.");
+          }}
         />
       )}
-
-      {/* Load Project Modal */}
-      
-      {showAuthModal && (
+      {modal === "auth" && (
         <AuthModal
-          onClose={() => setShowAuthModal(false)}
-          onSuccess={() => setShowAuthModal(false)}
+          onClose={() => setModal("")}
+          onSuccess={() => setModal("")}
         />
       )}
-
-      {showLoadModal && (
-        <LoadProjectModal
-          sortOrder={sortOrder}
-          setSortOrder={setSortOrder}
-          sortedProjects={sortedProjects}
-          onClose={() => setShowLoadModal(false)}
-          onDuplicate={duplicateProject}
-          onDelete={deleteProject}
-          onLoad={loadProject}
-        />
+      {modal === "qr" && (
+        <QRCodeModal url={shareUrl} onClose={() => setModal("")} />
       )}
     </div>
   );

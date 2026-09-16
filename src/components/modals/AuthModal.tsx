@@ -21,6 +21,7 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
     setLoading(true);
 
     try {
+      if (!auth) throw new Error('Cloud accounts are not configured. Projects can still be saved on this device.');
       if (isSignUp) {
         await createUserWithEmailAndPassword(auth, email, password);
       } else {

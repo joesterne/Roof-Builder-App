@@ -1,347 +1,305 @@
-import React, { useEffect, useState } from 'react';
-import { motion, Reorder } from 'motion/react';
-import { Layer, RoofParams } from '../types';
-import { GripVertical, ZoomIn, ZoomOut, Trash2, ExternalLink, Info, CloudRain, Snowflake } from 'lucide-react';
-import WeatherOverlay from './WeatherOverlay';
-import { isValidOrder } from '../utils';
-import { useSecretCode } from '../hooks/useSecretCode';
-import { toast } from 'sonner';
+import { computeEstimate } from '../lib/estimate';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Reorder, useDragControls } from 'motion/react';
+import { ArrowDown, ArrowUp, Copy, ExternalLink, GripVertical, Info, Layers3, RotateCcw, RotateCw, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
+import type { Layer, RoofParams } from '../types';
+import { areaUnit, displayArea, displayThickness, displayWeight, formatNumber, money } from '../utils';
+import { DEFAULT_VISUALIZER, diagramDataUri, getVisualizerView, layerColor } from '../lib/diagram';
+import type { VisualizerView } from '../lib/diagram';
 
 interface VisualizerProps {
   layers: Layer[];
   setLayers: React.Dispatch<React.SetStateAction<Layer[]>>;
   params: RoofParams;
+  setParams?: React.Dispatch<React.SetStateAction<RoofParams>>;
 }
 
-export default React.memo(function Visualizer({ layers, setLayers, params }: VisualizerProps) {
-  // Local state for smooth framer-motion reordering
-  const [items, setItems] = useState([...layers].sort((a, b) => a.order - b.order));
-  const [zoom, setZoom] = useState(0.8);
+interface LayerRowProps {
+  layer: Layer;
+  position: number;
+  count: number;
+  selected: boolean;
+  checked: boolean;
+  onToggleChecked: () => void;
+  onSelect: () => void;
+  onMove: (direction: -1 | 1) => void;
+  onRemove: () => void;
+  onDragEnd: () => void;
+}
 
-  const [hoveredLayer, setHoveredLayer] = useState<Layer | null>(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [showWeatherControls, setShowWeatherControls] = useState(false);
-  const [weatherDisplayEnabled, setWeatherDisplayEnabled] = useState(false);
-  const [weatherType, setWeatherType] = useState<'rain' | 'snow' | 'cats' | 'party'>('rain');
-  const [weatherIntensity, setWeatherIntensity] = useState(50);
+const buttonClass = 'rounded-lg border border-border-main bg-bg-panel p-2 text-text-secondary transition-colors hover:border-soprema-blue hover:text-soprema-blue disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-soprema-blue';
 
-  // Easter Eggs
-  const isDoABarrelRoll = useSecretCode('barrel');
-  const isCatsAndDogs = useSecretCode('meow');
-  const isPartyMode = useSecretCode('party');
+function LayerRow({ layer, position, count, selected, checked, onToggleChecked, onSelect, onMove, onRemove, onDragEnd }: LayerRowProps) {
+  const dragControls = useDragControls();
+  return (
+    <Reorder.Item value={layer.id} dragListener={false} dragControls={dragControls} onDragEnd={onDragEnd}
+      className={`relative rounded-xl border bg-bg-panel p-3 shadow-sm ${selected ? 'border-soprema-blue ring-1 ring-soprema-blue/15' : 'border-border-main'}`}>
+      <div className="flex items-start gap-2">
+        <input type="checkbox" checked={checked} onChange={onToggleChecked}
+          aria-label={`Select application ${count - position}: ${layer.material.name} for bulk actions`}
+          className="mt-2 h-4 w-4 shrink-0 cursor-pointer accent-soprema-blue" />
+        <button type="button" onPointerDown={event => dragControls.start(event)}
+          onKeyDown={event => {
+            if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+              event.preventDefault();
+              onMove(event.key === 'ArrowUp' ? -1 : 1);
+            }
+          }}
+          className="mt-0.5 touch-none cursor-grab rounded p-1 text-text-muted active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-soprema-blue"
+          aria-label={`Reorder ${layer.material.name}. Use up and down arrows to move.`} title="Drag to move; arrow keys also move this layer">
+          <GripVertical size={17} aria-hidden="true" />
+        </button>
+        <button type="button" onClick={onSelect} aria-pressed={selected}
+          className="min-w-0 flex-1 rounded text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-soprema-blue">
+          <span className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: layerColor(layer.material.category) }} />
+            {layer.material.category}
+          </span>
+          <span className="block break-words text-sm font-semibold text-text-main">{layer.material.name}</span>
+          <span className="mt-1 block text-[11px] text-text-muted">Application {count - position}</span>
+        </button>
+      </div>
+      <div className="mt-2 flex justify-end gap-1 border-t border-border-main/60 pt-2">
+        <button type="button" disabled={position === 0} onClick={() => onMove(-1)} className="rounded p-1.5 text-text-muted hover:bg-bg-page hover:text-soprema-blue disabled:opacity-25"
+          aria-label={`Move ${layer.material.name} toward roof exterior`} title="Move toward exterior"><ArrowUp size={15} /></button>
+        <button type="button" disabled={position === count - 1} onClick={() => onMove(1)} className="rounded p-1.5 text-text-muted hover:bg-bg-page hover:text-soprema-blue disabled:opacity-25"
+          aria-label={`Move ${layer.material.name} toward roof support`} title="Move toward support"><ArrowDown size={15} /></button>
+        <button type="button" onClick={onRemove} className="ml-1 rounded p-1.5 text-text-muted hover:bg-red-50 hover:text-red-600"
+          aria-label={`Remove ${layer.material.name}`} title="Remove this layer"><Trash2 size={15} /></button>
+      </div>
+    </Reorder.Item>
+  );
+}
+
+export default React.memo(function Visualizer({ layers, setLayers, params, setParams }: VisualizerProps) {
+  const [localView, setLocalView] = useState<VisualizerView>(() => getVisualizerView(params));
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState('');
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
+  const [pendingBulk, setPendingBulk] = useState<{ type: 'duplicate' | 'delete'; ids: string[] } | null>(null);
+  const effectiveParams = useMemo(() => setParams ? params : { ...params, visualizer: localView }, [params, setParams, localView]);
+  const view = getVisualizerView(effectiveParams);
+  const ordered = useMemo(() => [...layers].sort((a, b) => a.order - b.order), [layers]);
+  const exteriorFirst = useMemo(() => ordered.slice().reverse(), [ordered]);
+  const checkedLayers = ordered.filter(layer => checkedIds.has(layer.id));
+  const canDuplicate = checkedLayers.length > 0 && layers.length + checkedLayers.length <= 100;
 
   useEffect(() => {
-    if (isCatsAndDogs) {
-      setWeatherType('cats');
-      setWeatherDisplayEnabled(true);
-    } else if (isPartyMode) {
-      setWeatherType('party');
-      setWeatherDisplayEnabled(true);
-    } else {
-      setWeatherType('rain'); // reset
-    }
-  }, [isCatsAndDogs, isPartyMode]);
-
-  // Sync when props change from other tabs or sidebar
-  useEffect(() => {
-    setItems([...layers].sort((a, b) => a.order - b.order));
+    const present = new Set(layers.map(layer => layer.id));
+    setCheckedIds(previous => {
+      const next = new Set([...previous].filter(id => present.has(id)));
+      return next.size === previous.size ? previous : next;
+    });
   }, [layers]);
 
-  const handleReorder = (newItems: Layer[]) => {
-    if (!isValidOrder(newItems)) {
-      toast.error('Invalid layer order. Please follow standard assembly hierarchy.');
-      // Revert to current valid order
-      setItems([...layers].sort((a, b) => a.order - b.order));
-      return;
-    }
+  useEffect(() => {
+    // Inspect the committed result, including any concurrent catalog changes.
+    if (!pendingBulk) return;
+    const present = new Set(layers.map(layer => layer.id));
+    const count = pendingBulk.ids.filter(id => pendingBulk.type === 'duplicate' ? present.has(id) : !present.has(id)).length;
+    if (pendingBulk.type === 'duplicate') {
+      setAnnouncement(count ? `${count} layer${count === 1 ? '' : 's'} duplicated. Application order updated.` : 'No layers duplicated. The assembly supports a maximum of 100 layers.');
+    } else setAnnouncement(`${count} layer${count === 1 ? '' : 's'} removed. Application order updated.`);
+    setPendingBulk(null);
+  }, [layers, pendingBulk]);
+  const selected = exteriorFirst.find(layer => layer.id === selectedId) ?? exteriorFirst[0];
+  const estimate = useMemo(() => computeEstimate(params, layers), [params, layers]);
+  const image = useMemo(() => diagramDataUri(effectiveParams, layers), [effectiveParams, layers]);
+  const knownWeightCount = layers.filter(layer => typeof layer.material.weightKgM2 === 'number' && Number.isFinite(layer.material.weightKgM2) && layer.material.weightKgM2 >= 0).length;
 
-    setItems(newItems);
-    // Update global layers with new order
-    const updatedLayers = newItems.map((item, index) => ({
-      ...item,
-      order: index
-    }));
-    setLayers(updatedLayers);
-  };
-
-  const handleZoomIn = () => setZoom(z => Math.min(z + 0.2, 2.0));
-  const handleZoomOut = () => setZoom(z => Math.max(z - 0.2, 0.4));
-
-  const getEstimatedWeightPerSqFt = (category: string) => {
-    switch (category) {
-      case 'Vapor Barrier': return 0.1;
-      case 'Insulation': return 0.2;
-      case 'Coverboard': return 0.5;
-      case 'Base Ply': return 0.7;
-      case 'Cap Sheet': return 1.0;
-      case 'Adhesive/Primer': return 0.05;
-      default: return 0.5;
+  const updateView = (patch: Partial<VisualizerView>) => {
+    if (setParams) {
+      setParams(previous => ({ ...previous, visualizer: getVisualizerView({ ...previous, visualizer: { ...getVisualizerView(previous), ...patch } }) }));
+    } else {
+      setLocalView(previous => getVisualizerView({ ...params, visualizer: { ...previous, ...patch } }));
     }
   };
 
-  const totalWeightPerSqFt = items.reduce((acc, layer) => acc + getEstimatedWeightPerSqFt(layer.material.category), 0);
-  const totalWeight = totalWeightPerSqFt * params.area;
+  const reorder = (ids: string[]) => {
+    setLayers(previous => {
+      const byId = new Map(previous.map(layer => [layer.id, layer]));
+      // A sidebar update can arrive during a drag. Do not lose a newly added layer.
+      if (ids.length !== previous.length || new Set(ids).size !== ids.length || ids.some(id => !byId.has(id))) return previous;
+      return ids.slice().reverse().map((id, order) => ({ ...byId.get(id)!, order }));
+    });
+  };
+
+  const move = (id: string, direction: -1 | 1) => {
+    const ids = exteriorFirst.map(layer => layer.id);
+    const index = ids.indexOf(id);
+    const destination = index + direction;
+    if (index < 0 || destination < 0 || destination >= ids.length) return;
+    [ids[index], ids[destination]] = [ids[destination], ids[index]];
+    reorder(ids);
+    setAnnouncement(`${exteriorFirst[index].material.name} moved ${direction < 0 ? 'toward the exterior' : 'toward the support'}. Application order updated.`);
+  };
+
+  const remove = (layer: Layer) => {
+    setLayers(previous => previous.filter(item => item.id !== layer.id).sort((a, b) => a.order - b.order).map((item, order) => ({ ...item, order })));
+    setAnnouncement(`${layer.material.name} removed from the assembly.`);
+  };
+
+  const toggleChecked = (id: string) => {
+    setCheckedIds(previous => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const duplicateChecked = () => {
+    if (!canDuplicate) return;
+    // Generate IDs once per action: React may evaluate a state updater more than once.
+    const duplicateIds = new Map(checkedLayers.map(layer => [layer.id, crypto.randomUUID()]));
+    setLayers(previous => {
+      const installationOrder = previous.slice().sort((a, b) => a.order - b.order);
+      const count = installationOrder.filter(layer => duplicateIds.has(layer.id)).length;
+      if (previous.length + count > 100) return previous;
+      return installationOrder.flatMap(layer => duplicateIds.has(layer.id)
+        ? [layer, { ...layer, id: duplicateIds.get(layer.id)! }]
+        : [layer]).map((layer, order) => ({ ...layer, order }));
+    });
+    const copiedIds = [...duplicateIds.values()];
+    setCheckedIds(new Set(copiedIds));
+    setSelectedId(copiedIds[0] || null);
+    setPendingBulk({ type: 'duplicate', ids: copiedIds });
+  };
+
+  const deleteChecked = () => {
+    const ids = checkedLayers.map(layer => layer.id);
+    if (!ids.length) return;
+    const selectedIds = new Set(ids);
+    setLayers(previous => previous.filter(layer => !selectedIds.has(layer.id)).sort((a, b) => a.order - b.order)
+      .map((layer, order) => ({ ...layer, order })));
+    setCheckedIds(new Set());
+    if (selectedId && selectedIds.has(selectedId)) setSelectedId(null);
+    setPendingBulk({ type: 'delete', ids });
+  };
+
+  const productUrl = selected?.material.productUrl;
+  const productLink = productUrl && /^https:\/\/(?:www\.)?soprema\.us(?:\/|$)/i.test(productUrl) ? productUrl : undefined;
 
   return (
-    <div id="visualizer-capture" className={`w-full h-full min-h-[400px] flex items-center justify-center bg-bg-panel-hover overflow-hidden relative border-b border-border-main transition-transform duration-1000 ${isDoABarrelRoll ? 'rotate-180 scale-50' : ''}`} onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}>
-      
-      {weatherDisplayEnabled && <WeatherOverlay type={weatherType} intensity={weatherIntensity} />}
-      
-      {/* Drag and Drop Panel */}
-      <div className="absolute left-6 top-6 w-72 bg-bg-panel/90 backdrop-blur-md rounded-xl shadow-lg border border-border-main flex flex-col z-10 max-h-[90%]">
-        <div className="p-4 border-b border-border-main">
-          <h3 className="font-bold text-soprema-black text-sm uppercase tracking-wide">Assembly Layers</h3>
-          <p className="text-xs text-text-muted mt-1">Drag to reorder layers (bottom to top)</p>
+    <section className="flex min-h-0 flex-1 flex-col bg-bg-page" aria-label="Roof assembly visualizer">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-main bg-bg-panel px-5 py-4">
+        <div>
+          <h2 className="flex items-center gap-2 text-base font-bold text-text-main"><Layers3 size={19} className="text-soprema-blue" /> Assembly explorer</h2>
+          <p className="mt-0.5 text-xs text-text-muted">Build the application order and inspect each layer.</p>
         </div>
-        
-        <div className="p-2 overflow-y-auto flex-1">
-          {items.length === 0 ? (
-            <div className="p-4 text-sm text-text-muted text-center">No layers added.</div>
-          ) : (
-            <Reorder.Group axis="y" values={items} onReorder={handleReorder} className="flex flex-col gap-2">
-              {items.map((layer) => (
-                <Reorder.Item 
-                  key={layer.id} 
-                  value={layer}
-                  className="bg-bg-panel border border-border-main rounded-lg p-3 flex items-center gap-3 shadow-sm cursor-grab active:cursor-grabbing hover:border-soprema-blue transition-colors group"
-                  onMouseMove={(e) => {
-                    setHoveredLayer(layer);
-                    setMousePos({ x: e.clientX, y: e.clientY });
-                  }}
-                  onMouseLeave={() => setHoveredLayer(null)}
-                >
-                  <GripVertical className="w-4 h-4 text-gray-400 shrink-0" />
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="text-xs font-bold text-soprema-blue uppercase tracking-wider">{layer.material.category}</span>
-                    <span className="text-sm font-medium text-text-main truncate">{layer.material.name}</span>
-                  </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {layer.material.productUrl && (
-                      <a 
-                        href={layer.material.productUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        onPointerDown={(e) => e.stopPropagation()}
-                        className="p-1.5 text-gray-400 hover:text-soprema-blue hover:bg-blue-50 rounded transition-colors"
-                        title="View product on Soprema website"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    )}
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setLayers(prev => {
-                          const filtered = prev.filter(l => l.id !== layer.id);
-                          return filtered.map((l, i) => ({ ...l, order: i }));
-                        });
-                      }}
-                      onPointerDown={(e) => e.stopPropagation()}
-                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors cursor-pointer"
-                      title="Remove layer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </Reorder.Item>
-              ))}
-            </Reorder.Group>
-          )}
+        <div className="flex items-center gap-1.5" aria-label="View controls">
+          <button type="button" className={buttonClass} aria-label="Zoom out" title="Zoom out" disabled={view.zoom <= 0.5} onClick={() => updateView({ zoom: view.zoom - 0.1 })}><ZoomOut size={17} /></button>
+          <span className="min-w-12 text-center text-xs font-semibold tabular-nums text-text-secondary" aria-live="polite">{Math.round(view.zoom * 100)}%</span>
+          <button type="button" className={buttonClass} aria-label="Zoom in" title="Zoom in" disabled={view.zoom >= 2} onClick={() => updateView({ zoom: view.zoom + 0.1 })}><ZoomIn size={17} /></button>
+          <button type="button" className={`${buttonClass} ml-2`} aria-label="Rotate view left" title="Rotate left" onClick={() => updateView({ rotation: view.rotation - 15 < -180 ? 165 : view.rotation - 15 })}><RotateCcw size={17} /></button>
+          <button type="button" className={buttonClass} aria-label="Rotate view right" title="Rotate right" onClick={() => updateView({ rotation: view.rotation + 15 > 180 ? -165 : view.rotation + 15 })}><RotateCw size={17} /></button>
+          <button type="button" className={`${buttonClass} ml-1 px-3 text-xs font-semibold`} onClick={() => updateView(DEFAULT_VISUALIZER)}>Reset view</button>
         </div>
       </div>
 
-      <div 
-        className="relative ml-48 transition-transform duration-300 ease-out" 
-        style={{
-          transformStyle: 'preserve-3d',
-          transform: `rotateX(60deg) rotateZ(-45deg) scale(${zoom})`,
-          width: '300px',
-          height: '300px',
-        }}
-      >
-        {/* Base Roof Deck (Always present as visual base) */}
-        <div 
-          className="absolute w-full h-full bg-orange-100 border-2 border-orange-200 shadow-xl"
-          style={{ transform: 'translateZ(-20px)' }}
-        >
-          <div className="absolute inset-0 flex items-center justify-center opacity-30 text-orange-800 font-bold tracking-widest" style={{ transform: 'rotateZ(45deg)' }}>
-            WOOD DECK
-          </div>
-        </div>
-
-        {items.map((layer, index) => {
-          // Calculate Z offset to stack them up based on current index
-          const zOffset = (index + 1) * 40;
-          
-          return (
-            <motion.div
-              key={layer.id}
-              initial={{ opacity: 0, z: zOffset + 200 }}
-              animate={{ opacity: 1, z: zOffset }}
-              exit={{ opacity: 0, z: zOffset + 200 }}
-              transition={{ duration: 0.5, type: 'spring' }}
-              className="absolute w-full h-full border border-white/20 shadow-lg flex items-center justify-center"
-              style={{
-                backgroundColor: layer.material.colorHex || '#ccc',
-                opacity: 0.9,
-              }}
-            >
-              <div 
-                className="bg-bg-panel/80 px-2 py-1 rounded text-xs font-bold text-text-main backdrop-blur-sm pointer-events-none"
-                style={{ transform: 'rotateZ(45deg) rotateX(-60deg)' }}
-              >
-                {layer.material.name}
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_310px]">
+          <div className="min-w-0 space-y-4">
+            <div id="visualizer-capture" className="overflow-hidden rounded-2xl border border-border-main bg-white shadow-sm">
+              <div className="max-h-[700px] min-h-[320px] overflow-auto" tabIndex={0} aria-label="Exploded roof diagram. Scroll to inspect a zoomed view.">
+                <img src={image} alt={`Exploded roof assembly, exterior to support: ${exteriorFirst.map(layer => layer.material.name).join(', ') || 'no materials selected'}. Select a layer below for specifications.`}
+                  className="block max-w-none" style={{ width: `${view.zoom * 100}%`, minWidth: `${560 * view.zoom}px` }} draggable={false} />
               </div>
-            </motion.div>
-          );
-        })}
-      </div>
-      
-      {/* Weather Controls */}
-      <div className="absolute top-20 right-6 bg-bg-panel/90 backdrop-blur-md rounded-lg shadow-sm border border-border-main z-10 p-4 w-72">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-soprema-black text-sm uppercase tracking-wide flex items-center gap-2">
-            {weatherType === 'cats' ? <span className="text-sm">🐱</span> : (weatherType === 'party' ? <span className="text-sm">🎉</span> : (weatherType === 'rain' ? <CloudRain className="w-4 h-4 text-soprema-blue" /> : <Snowflake className="w-4 h-4 text-blue-300" />))}
-            Weather Simulation
-          </h3>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" className="sr-only peer" checked={showWeatherControls} onChange={(e) => setShowWeatherControls(e.target.checked)} />
-            <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-soprema-blue"></div>
-          </label>
-        </div>
-        
-        {showWeatherControls && (
-          <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="flex bg-gray-200 dark:bg-gray-800 p-1 rounded-md">
-              <button
-                onClick={() => setWeatherType('rain')}
-                className={`flex-1 px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-sm transition-colors ${weatherType === 'rain' ? 'bg-white dark:bg-gray-600 text-soprema-blue shadow-sm' : 'text-text-muted hover:text-text-main'}`}
-              >
-                Rain
-              </button>
-              <button
-                onClick={() => setWeatherType('snow')}
-                className={`flex-1 px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-sm transition-colors ${weatherType === 'snow' ? 'bg-white dark:bg-gray-600 text-soprema-blue shadow-sm' : 'text-text-muted hover:text-text-main'}`}
-              >
-                Snow
-              </button>
+              <div className="grid gap-4 border-t border-border-main bg-bg-panel px-4 py-3 sm:grid-cols-2 lg:grid-cols-3">
+                <label className="block text-xs font-medium text-text-secondary">
+                  <span className="mb-2 flex justify-between"><span>Layer separation</span><span className="text-text-muted">{Math.round(view.explosion)}</span></span>
+                  <input type="range" min="0" max="96" step="4" value={view.explosion} onChange={event => updateView({ explosion: Number(event.target.value) })} className="w-full accent-soprema-blue" />
+                </label>
+                <label className="block text-xs font-medium text-text-secondary">Visual weather
+                  <select className="mt-1.5 w-full rounded-lg border border-border-main bg-bg-panel px-2 py-1.5 text-text-main" value={view.weather} onChange={event => updateView({ weather: event.target.value as VisualizerView['weather'] })}>
+                    <option value="none">Clear</option><option value="rain">Rain</option><option value="snow">Snow</option>
+                  </select>
+                </label>
+                <label className="block text-xs font-medium text-text-secondary">
+                  <span className="mb-2 flex justify-between"><span>Weather intensity</span><span className="text-text-muted">{view.weatherIntensity}%</span></span>
+                  <input type="range" min="0" max="100" step="10" value={view.weatherIntensity} disabled={view.weather === 'none'} onChange={event => updateView({ weatherIntensity: Number(event.target.value) })} className="w-full accent-soprema-blue disabled:opacity-35" />
+                </label>
+              </div>
             </div>
-            
-            <div>
-              <div className="flex justify-between text-xs text-text-muted font-medium mb-1">
-                <span>Intensity</span>
-                <span>{weatherIntensity}%</span>
-              </div>
-              <input 
-                type="range" 
-                min="10" 
-                max="100" 
-                value={weatherIntensity}
-                onChange={(e) => setWeatherIntensity(parseInt(e.target.value))}
-                className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-soprema-blue dark:bg-gray-700"
-              />
+
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+              <Summary label="Roof surface area" value={`${formatNumber(displayArea(estimate.surfaceArea, params.unitSystem))} ${areaUnit(params.unitSystem)}`} />
+              <Summary label={estimate.isComplete ? 'Estimated total' : 'Known cost subtotal'} value={money(estimate.total)} />
+              <Summary label="Selected layers" value={String(layers.length)} />
+              <Summary label="Layers with weight data" value={`${knownWeightCount} / ${layers.length}`} />
+            </div>
+            <div className="flex items-start gap-2 rounded-xl border border-border-main bg-bg-panel p-3 text-xs leading-relaxed text-text-muted">
+              <Info size={16} className="mt-0.5 shrink-0 text-soprema-blue" />
+              <p>Thickness, spacing, and roof proportions are illustrative. Rain and snow are visual effects. Verify the complete assembly and application sequence against manufacturer details. {knownWeightCount < layers.length ? 'Missing product weights prevent a complete load calculation.' : 'Product weights do not establish the structural capacity of the roof.'}</p>
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Visualizer Header Toolbar */}
-      <div className="absolute top-6 right-6 bg-bg-panel/90 backdrop-blur-md rounded-lg shadow-sm border border-border-main flex items-center z-10 p-1">
-        <button 
-          onClick={() => setWeatherDisplayEnabled(!weatherDisplayEnabled)}
-          className={`p-1.5 rounded-md transition-colors flex items-center gap-1.5 px-2 text-xs font-bold uppercase tracking-wider ${weatherDisplayEnabled ? 'bg-soprema-blue text-white' : 'text-text-secondary hover:bg-bg-page'}`}
-          title="Toggle Weather Display"
-        >
-          {weatherType === 'cats' ? '🐱' : (weatherType === 'party' ? '🎉' : (weatherType === 'rain' ? <CloudRain className="w-4 h-4" /> : <Snowflake className="w-4 h-4" />))}
-          Weather
-        </button>
-        <div className="w-px h-5 bg-border-main mx-1"></div>
-        <button 
-          onClick={handleZoomOut}
-          disabled={zoom <= 0.4}
-          className="p-1.5 hover:bg-bg-page rounded-md text-text-secondary disabled:opacity-50 transition-colors"
-          title="Zoom Out"
-        >
-          <ZoomOut className="w-5 h-5" />
-        </button>
-        <span className="w-12 text-center text-xs font-bold text-text-muted">
-          {Math.round(zoom * 100)}%
-        </span>
-        <button 
-          onClick={handleZoomIn}
-          disabled={zoom >= 2.0}
-          className="p-1.5 hover:bg-bg-page rounded-md text-text-secondary disabled:opacity-50 transition-colors"
-          title="Zoom In"
-        >
-          <ZoomIn className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Legend / Helper */}
-      <div className="absolute bottom-4 right-4 bg-bg-panel/90 p-4 rounded-lg shadow-sm border border-border-main text-sm z-10">
-        <h3 className="font-bold text-soprema-black mb-2">Assembly View</h3>
-        <p className="text-text-muted text-xs">Layers are stacked bottom to top.</p>
-        <p className="text-text-muted text-xs">Deck is shown as base reference.</p>
-      </div>
-
-      {/* Summary Card */}
-      <div className="absolute bottom-4 left-6 bg-bg-panel/90 backdrop-blur-md p-4 rounded-xl shadow-lg border border-border-main z-10 w-72">
-        <h3 className="font-bold text-soprema-black text-sm uppercase tracking-wide mb-3 flex items-center gap-2">
-          <Info className="w-4 h-4 text-soprema-blue" /> Project Summary
-        </h3>
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-text-muted font-medium">Total Area</span>
-            <span className="text-sm font-bold text-text-main">{params.area.toLocaleString()} sq ft</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-text-muted font-medium">System Layers</span>
-            <span className="text-sm font-bold text-text-main">{items.length}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-text-muted font-medium">Estimated Weight</span>
-            <span className="text-sm font-bold text-text-main">{totalWeight.toLocaleString(undefined, { maximumFractionDigits: 0 })} lbs</span>
-          </div>
-        </div>
-      </div>
-      {/* Hover Tooltip Portal */}
-      {hoveredLayer && (
-        <div 
-          className="fixed z-[100] w-72 bg-soprema-black text-white text-xs rounded-md p-3 shadow-xl pointer-events-none"
-          style={{ 
-            left: mousePos.x + 15, 
-            top: mousePos.y + 15 > window.innerHeight - 150 ? mousePos.y - 120 : mousePos.y + 15 
-          }}
-        >
-          <p className="font-bold text-sm mb-1">{hoveredLayer.material.name}</p>
-          <p className="text-gray-300 mb-2 leading-relaxed">{hoveredLayer.material.description}</p>
-          
-          <div className="text-gray-300 space-y-1 mt-2 border-t border-gray-700 pt-2">
-            {hoveredLayer.material.techSpecs && Object.keys(hoveredLayer.material.techSpecs).length > 0 ? (
-              Object.entries(hoveredLayer.material.techSpecs).map(([k, v]) => (
-                <div key={k} className="flex justify-between">
-                  <span>{k}:</span>
-                  <span className="font-medium text-white">{v}</span>
+          <aside className="min-w-0 space-y-4" aria-label="Assembly layers and selected product">
+            <div className="rounded-2xl border border-border-main bg-bg-panel p-4 shadow-sm">
+              <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-bold text-text-main">Roof layers</h3><span className="rounded-full bg-soprema-blue/10 px-2 py-0.5 text-xs font-semibold text-soprema-blue">{layers.length}</span></div>
+              <p className="mb-3 text-xs leading-relaxed text-text-muted">Drag the handle, use its arrow keys, or use the move buttons. Application 1 is installed first.</p>
+              {layers.length > 0 && <div className="mb-3 rounded-xl border border-border-main bg-bg-page p-3" aria-label="Bulk layer actions">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <span className="font-semibold text-text-secondary">{checkedLayers.length} selected</span>
+                  <div className="flex gap-3">
+                    <button type="button" onClick={() => setCheckedIds(new Set(layers.map(layer => layer.id)))}
+                      disabled={checkedLayers.length === layers.length} className="font-semibold text-soprema-blue hover:underline disabled:opacity-40">Select all layers</button>
+                    <button type="button" onClick={() => setCheckedIds(new Set())} disabled={!checkedLayers.length}
+                      className="text-text-muted hover:text-soprema-blue disabled:opacity-40">Clear selection</button>
+                  </div>
                 </div>
-              ))
-            ) : (
-              <p className="italic text-text-muted">No tech specs available</p>
-            )}
-            
-            {hoveredLayer.material.certifications && hoveredLayer.material.certifications.length > 0 && (
-              <div className="mt-2 pt-2 border-t border-gray-700">
-                <span className="text-gray-400 block mb-1">Certifications:</span>
-                <div className="flex flex-wrap gap-1">
-                  {hoveredLayer.material.certifications.map(c => (
-                    <span key={c} className="px-1.5 py-0.5 bg-gray-800 rounded text-[10px] text-gray-300">{c}</span>
-                  ))}
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button type="button" onClick={duplicateChecked} disabled={!canDuplicate}
+                    className={`${buttonClass} flex items-center justify-center gap-1.5 px-2 text-xs font-semibold`} title="Insert a copy immediately after each selected layer in application order">
+                    <Copy size={14} /> Duplicate selected
+                  </button>
+                  <button type="button" onClick={deleteChecked} disabled={!checkedLayers.length}
+                    className={`${buttonClass} flex items-center justify-center gap-1.5 px-2 text-xs font-semibold hover:border-red-600 hover:text-red-600`}>
+                    <Trash2 size={14} /> Delete selected
+                  </button>
                 </div>
+                {checkedLayers.length > 0 && !canDuplicate && <p className="mt-2 text-xs text-amber-800" role="status">Maximum 100 layers. Select no more than {Math.max(0, 100 - layers.length)} to duplicate.</p>}
+              </div>}
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-text-muted">Exterior / weather side</p>
+              {exteriorFirst.length ? (
+                <Reorder.Group axis="y" values={exteriorFirst.map(layer => layer.id)} onReorder={reorder} as="ol" className="space-y-2" aria-label="Layers from exterior to support">
+                  {exteriorFirst.map((layer, index) => <LayerRow key={layer.id} layer={layer} position={index} count={layers.length} selected={selected?.id === layer.id}
+                    checked={checkedIds.has(layer.id)} onToggleChecked={() => toggleChecked(layer.id)}
+                    onSelect={() => setSelectedId(layer.id)} onMove={direction => move(layer.id, direction)} onRemove={() => remove(layer)}
+                    onDragEnd={() => setAnnouncement('Application order updated. Review the assembly sequence against manufacturer details.')} />)}
+                </Reorder.Group>
+              ) : <p className="rounded-xl border border-dashed border-border-main p-5 text-center text-sm text-text-muted">Choose a material from the catalog to start.</p>}
+              <p className="mt-2 text-[10px] font-semibold uppercase tracking-widest text-text-muted">Support / first installed</p>
+            </div>
+
+            {selected && (
+              <div className="rounded-2xl border border-border-main bg-bg-panel p-4 shadow-sm" aria-label="Selected layer details">
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-soprema-blue">Selected material</p>
+                <h3 className="break-words text-sm font-bold text-text-main">{selected.material.name}</h3>
+                <p className="mt-2 text-xs leading-relaxed text-text-muted">{selected.material.description}</p>
+                <dl className="mt-4 space-y-2 text-xs">
+                  <Spec label="Recorded thickness" value={displayThickness(selected.material.thicknessMm, params.unitSystem)} />
+                  <Spec label="Recorded weight / area" value={displayWeight(selected.material.weightKgM2, params.unitSystem)} />
+                  <Spec label={params.unitSystem === 'metric' ? 'RSI (m²·K/W)' : 'R-value (ft²·°F·h/BTU)'} value={formatNumber(selected.material.rValue == null ? null : selected.material.rValue * (params.unitSystem === 'metric' ? 0.1761101838 : 1))} />
+                </dl>
+                {!!selected.material.techSpecs && Object.keys(selected.material.techSpecs).length > 0 && <details className="mt-3 border-t border-border-main pt-3 text-xs">
+                  <summary className="cursor-pointer font-semibold text-text-secondary">Manufacturer specification text</summary>
+                  <dl className="mt-3 space-y-2">{Object.entries(selected.material.techSpecs).map(([label, value]) => <Spec key={label} label={label} value={value} />)}</dl>
+                </details>}
+                {productLink && <a href={productLink} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-soprema-blue hover:underline">View product at SOPREMA <ExternalLink size={13} /></a>}
               </div>
             )}
-          </div>
+          </aside>
         </div>
-      )}
-    </div>
+      </div>
+      <p className="sr-only" role="status" aria-live="polite">{announcement}</p>
+    </section>
   );
 });
+
+function Summary({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-xl border border-border-main bg-bg-panel p-3"><p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted">{label}</p><p className="text-base font-bold tabular-nums text-text-main">{value}</p></div>;
+}
+
+function Spec({ label, value }: { label: string; value: string }) {
+  return <div className="flex items-start justify-between gap-3"><dt className="text-text-muted">{label}</dt><dd className="max-w-[60%] break-words text-right font-medium text-text-main">{value}</dd></div>;
+}

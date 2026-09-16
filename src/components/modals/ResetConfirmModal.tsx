@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 interface ResetConfirmModalProps {
@@ -7,8 +7,10 @@ interface ResetConfirmModalProps {
 }
 
 export default function ResetConfirmModal({ onClose, onConfirm }: ResetConfirmModalProps) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => { dialog.current?.showModal(); }, []);
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <dialog ref={dialog} onCancel={onClose} aria-label="Reset Workspace" className="m-auto max-h-[90dvh] rounded-lg bg-transparent p-0 text-text-main backdrop:bg-black/60">
       <div className="bg-bg-panel rounded-lg shadow-2xl max-w-sm w-full p-6 text-text-main border border-border-main">
         <div className="flex items-center gap-3 mb-4">
           <div className="bg-red-100 p-2 rounded-full text-red-600">
@@ -21,7 +23,7 @@ export default function ResetConfirmModal({ onClose, onConfirm }: ResetConfirmMo
         </p>
         <div className="flex justify-end gap-3">
           <button 
-            onClick={onClose}
+            autoFocus onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-text-secondary bg-bg-page hover:bg-gray-200 rounded-md transition-colors"
           >
             Cancel
@@ -34,6 +36,6 @@ export default function ResetConfirmModal({ onClose, onConfirm }: ResetConfirmMo
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }
