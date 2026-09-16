@@ -1,615 +1,464 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Reorder } from 'motion/react';
-import { RoofParams, Layer, Category, Material } from '../types';
-import { SOPREMA_MATERIALS } from '../data';
-import { Plus, Trash2, Settings, List, MapPin, Search, X, ExternalLink, ChevronUp, ChevronDown, GripVertical, Calculator, Copy, CheckSquare, Square, Check } from 'lucide-react';
-import ProjectStatistics from './ProjectStatistics';
-import LocationPicker from './LocationPicker';
-import { getCategoryPriority, parseThickness, parseRValue } from '../utils';
+import React, { useMemo, useRef, useState } from "react";
+import {
+  Plus,
+  Search,
+  ExternalLink,
+  X,
+  Layers3,
+  SlidersHorizontal,
+} from "lucide-react";
+import { RoofParams, Layer, Material } from "../types";
+import { ACTIVE_MATERIALS } from "../data";
+import {
+  areaUnit,
+  displayArea,
+  inputArea,
+  displayThickness,
+  money,
+  formatNumber,
+} from "../utils";
+import LocationPicker from "./LocationPicker";
+import ProjectStatistics from "./ProjectStatistics";
 
-interface SidebarProps {
+interface Props {
   params: RoofParams;
   setParams: (params: RoofParams) => void;
   layers: Layer[];
   setLayers: React.Dispatch<React.SetStateAction<Layer[]>>;
 }
-
-const CATEGORIES: Category[] = [
-  'Adhesive/Primer',
-  'Vapor Barrier',
-  'Insulation',
-  'Coverboard',
-  'Base Ply',
-  'Cap Sheet'
-];
-
-// Memoize the Sidebar component to prevent re-renders when activeTab changes in App.tsx
-export default React.memo(function Sidebar({ params, setParams, layers, setLayers }: SidebarProps) {
-  const [selectedCategory, setSelectedCategory] = useState<Category | 'All'>('Cap Sheet');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [hoveredMaterial, setHoveredMaterial] = useState<Material | null>(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [compareList, setCompareList] = useState<Material[]>([]);
-  const [showCompareModal, setShowCompareModal] = useState(false);
-
-  const [localLayers, setLocalLayers] = useState([...layers].sort((a, b) => a.order - b.order));
-  const [selectedLayerIds, setSelectedLayerIds] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    setLocalLayers([...layers].sort((a, b) => a.order - b.order));
-  }, [layers]);
-
-  const handleReorder = useCallback((newItems: Layer[]) => {
-    setLocalLayers(newItems);
-    setLayers(newItems.map((item, index) => ({
-      ...item,
-      order: index
-    })));
-  }, [setLayers]);
-
-  const filteredMaterials = useMemo(() => {
-    return SOPREMA_MATERIALS.filter(m => {
-      const matchesCategory = selectedCategory === 'All' || m.category === selectedCategory;
-      const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            m.description.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
-    });
-  }, [selectedCategory, searchQuery]);
-
-  const addLayer = useCallback((material: Material) => {
-    setLayers(prev => {
-      const priority = getCategoryPriority(material.category);
-      
-      // If it's an adhesive/primer, or if there are no layers, append to top
-      if (priority === -1 || prev.length === 0) {
-        return [...prev, { id: Math.random().toString(36).substr(2, 9), material, order: prev.length }];
-      }
-      
-      // Find the right insertion index from top to bottom
-      let insertIndex = prev.length;
-      for (let i = prev.length - 1; i >= 0; i--) {
-         const p = getCategoryPriority(prev[i].material.category);
-         if (p !== -1 && p > priority) {
-           insertIndex = i;
-         } else if (p !== -1 && p <= priority) {
-           break;
-         }
-      }
-      
-      const newLayers = [...prev];
-      newLayers.splice(insertIndex, 0, { id: Math.random().toString(36).substr(2, 9), material, order: 0 });
-      
-      // re-assign order
-      return newLayers.map((l, idx) => ({ ...l, order: idx }));
-    });
-  }, [setLayers]);
-
-  const removeLayer = useCallback((id: string) => {
-    setLayers(prev => {
-      const filtered = prev.filter(l => l.id !== id);
-      return filtered.map((l, i) => ({ ...l, order: i }));
-    });
-    setSelectedLayerIds(prev => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  }, [setLayers]);
-
-  const toggleLayerSelection = useCallback((id: string, e: React.MouseEvent | React.PointerEvent) => {
-    e.stopPropagation();
-    setSelectedLayerIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
-
-  const deleteSelectedLayers = useCallback(() => {
-    setLayers(prev => {
-      const filtered = prev.filter(l => !selectedLayerIds.has(l.id));
-      return filtered.map((l, i) => ({ ...l, order: i }));
-    });
-    setSelectedLayerIds(new Set());
-  }, [selectedLayerIds, setLayers]);
-
-  const duplicateSelectedLayers = useCallback(() => {
-    setLayers(prev => {
-      const toDuplicate = prev.filter(l => selectedLayerIds.has(l.id));
-      const newItems = toDuplicate.map(layer => ({
-        ...layer,
-        id: Math.random().toString(36).substr(2, 9),
-      }));
-      const newLayers = [...prev, ...newItems];
-      return newLayers.map((l, i) => ({ ...l, order: i }));
-    });
-    setSelectedLayerIds(new Set());
-  }, [selectedLayerIds, setLayers]);
-
-  const toggleSelectAll = useCallback(() => {
-    if (selectedLayerIds.size === localLayers.length && localLayers.length > 0) {
-      setSelectedLayerIds(new Set());
-    } else {
-      setSelectedLayerIds(new Set(localLayers.map(l => l.id)));
-    }
-  }, [localLayers, selectedLayerIds]);
-
-
-  const moveLayer = useCallback((index: number, direction: 'up' | 'down') => {
-    if ((direction === 'up' && index === 0) || (direction === 'down' && index === layers.length - 1)) return;
-    
-    setLayers(prev => {
-      const newLayers = [...prev];
-      const swapIndex = direction === 'up' ? index - 1 : index + 1;
-      const temp = newLayers[index];
-      newLayers[index] = newLayers[swapIndex];
-      newLayers[swapIndex] = temp;
-      
-      // Update order
-      return newLayers.map((l, i) => ({ ...l, order: i }));
-    });
-  }, [layers.length, setLayers]);
-
-  const stats = useMemo(() => {
-    let totalThickness = 0;
-    let totalRValue = 0;
-    let totalCostPerSqFt = 0;
-    let rValueLayerCount = 0;
-
-    const categoryDataMap: Record<string, { name: string, value: number, cost: number, color: string }> = {};
-
-    layers.forEach(layer => {
-      const thickness = parseThickness(layer.material.techSpecs?.Thickness);
-      totalThickness += thickness;
-      
-      const rValueStr = layer.material.techSpecs?.['R-Value'];
-      if (rValueStr) {
-        const rValue = parseRValue(rValueStr, thickness);
-        totalRValue += rValue;
-        rValueLayerCount += 1;
-      }
-
-      let layerCost = 0;
-      if (layer.material.coveragePerUnit > 0) {
-        layerCost = layer.material.pricePerUnit / layer.material.coveragePerUnit;
-        totalCostPerSqFt += layerCost;
-      }
-
-      const cat = layer.material.category;
-      if (!categoryDataMap[cat]) {
-        categoryDataMap[cat] = {
-           name: cat,
-           value: 0,
-           cost: 0,
-           color: layer.material.colorHex || '#9ca3af'
-        };
-      }
-      categoryDataMap[cat].value += 1; // Count ratio
-      categoryDataMap[cat].cost += layerCost; // Cost ratio
-    });
-
-    const avgRValue = rValueLayerCount > 0 ? (totalRValue / rValueLayerCount) : 0;
-    
-    // Sort by cost for a consistent chart display
-    const compositionData = Object.values(categoryDataMap).sort((a, b) => b.cost - a.cost);
-
-    return { totalThickness, avgRValue, totalCostPerSqFt, compositionData };
-  }, [layers]);
-
-  return (
-    <div className="w-80 bg-bg-panel border-r border-border-main h-full flex flex-col overflow-y-auto">
-      <div className="p-6 border-b border-border-main">
-        <h2 className="text-lg font-bold text-soprema-black flex items-center gap-2 mb-4">
-          <Settings className="w-5 h-5 text-soprema-blue" />
-          Project Parameters
-        </h2>
-        
-        <div className="space-y-4">
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="block text-sm font-medium text-text-secondary">
-                Roof Size ({params.unitSystem === 'metric' ? 'Sq M' : 'Sq Ft'})
-              </label>
-              <button 
-                onClick={() => {
-                  if (params.unitSystem === 'imperial') {
-                    setParams({ ...params, unitSystem: 'metric', area: Math.round(params.area * 0.092903) });
-                  } else {
-                    setParams({ ...params, unitSystem: 'imperial', area: Math.round(params.area * 10.7639) });
-                  }
-                }}
-                className="text-xs bg-bg-panel hover:bg-bg-panel-hover border border-border-main px-2 py-0.5 rounded text-text-muted hover:text-text-main transition-colors"
-                title="Toggle unit system"
-              >
-                Switch to {params.unitSystem === 'imperial' ? 'Metric' : 'Imperial'}
-              </button>
-            </div>
-            <input 
-              type="number" 
-              value={params.area || ''}
-              onChange={e => setParams({ ...params, area: Number(e.target.value) })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-soprema-blue"
-              placeholder="e.g. 5000"
-            />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Pitch (x/12)</label>
-              <input 
-                type="number" 
-                value={params.pitch || ''}
-                onChange={e => setParams({ ...params, pitch: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-soprema-blue"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Waste Factor (%)</label>
-              <input 
-                type="number" 
-                value={params.wasteFactor * 100}
-                onChange={e => setParams({ ...params, wasteFactor: Number(e.target.value) / 100 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-soprema-blue"
-              />
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1 flex items-center gap-1">
-              <MapPin className="w-4 h-4 text-text-muted" /> Project Location
-            </label>
-            <LocationPicker 
-              onLocationSelect={(lat, lng) => {
-                setParams({ ...params, location: `${lat.toFixed(4)}, ${lng.toFixed(4)}`, coordinates: { lat, lng } });
-              }} 
-            />
-          </div>
-        </div>
-      </div>
-
-      <ProjectStatistics stats={stats} unitSystem={params.unitSystem} />
-
-      <div className="p-6 flex-1 flex flex-col">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-soprema-black flex items-center gap-2">
-            <List className="w-5 h-5 text-soprema-blue" />
-            Build Assembly
-          </h2>
-          {localLayers.length > 0 && (
-            <button
-              onClick={toggleSelectAll}
-              className="text-xs text-soprema-blue hover:text-blue-700 font-medium px-2 py-1 bg-blue-50 hover:bg-blue-100 rounded transition-colors"
-            >
-              {selectedLayerIds.size === localLayers.length ? 'Deselect All' : 'Select All'}
-            </button>
-          )}
-        </div>
-        
-        {selectedLayerIds.size > 0 && (
-          <div className="mb-4 p-2 bg-blue-50 border border-blue-200 rounded-md flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
-            <span className="text-sm font-medium text-soprema-blue pl-2">{selectedLayerIds.size} selected</span>
-            <div className="flex gap-2">
-              <button 
-                onClick={duplicateSelectedLayers}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-soprema-black hover:text-soprema-blue text-sm font-medium rounded border border-gray-200 shadow-sm transition-colors hover:border-blue-300"
-                title="Duplicate Selected"
-              >
-                <Copy className="w-4 h-4" /> <span className="hidden sm:inline">Duplicate</span>
-              </button>
-              <button 
-                onClick={deleteSelectedLayers}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-red-600 hover:text-red-700 text-sm font-medium rounded border border-gray-200 shadow-sm transition-colors hover:border-red-300 hover:bg-red-50"
-                title="Delete Selected"
-              >
-                <Trash2 className="w-4 h-4" /> <span className="hidden sm:inline">Delete</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Current Layers */}
-        <div className="space-y-2 mb-6">
-          {localLayers.length === 0 ? (
-            <p className="text-sm text-text-muted italic">No layers added yet. Start building your assembly below.</p>
-          ) : (
-            <Reorder.Group axis="y" values={localLayers} onReorder={handleReorder} className="flex flex-col gap-2">
-              {localLayers.map((layer, index) => (
-                <Reorder.Item 
-                  key={layer.id}
-                  value={layer}
-                  className="flex items-center justify-between bg-bg-panel p-3 rounded-md border border-border-main shadow-sm cursor-grab active:cursor-grabbing group hover:border-soprema-blue transition-colors"
-                >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <GripVertical className="w-4 h-4 text-gray-400 shrink-0 cursor-grab opacity-50 group-hover:opacity-100 transition-opacity" />
-                    <button
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => toggleLayerSelection(layer.id, e)}
-                      className="shrink-0 flex items-center justify-center w-5 h-5 rounded border bg-white focus:outline-none focus:ring-2 focus:ring-soprema-blue transition-colors"
-                      style={{ 
-                        borderColor: selectedLayerIds.has(layer.id) ? 'var(--color-soprema-blue)' : '#d1d5db',
-                        backgroundColor: selectedLayerIds.has(layer.id) ? 'var(--color-soprema-blue)' : 'white'
-                      }}
-                    >
-                      {selectedLayerIds.has(layer.id) && <Check className="w-3.5 h-3.5 text-white" />}
-                    </button>
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <span className="text-xs font-bold text-soprema-blue uppercase tracking-wider truncate">{layer.material.category}</span>
-                      <span className="text-sm font-medium text-text-main truncate">{layer.material.name}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="flex flex-col gap-0.5">
-                      <button 
-                        onPointerDown={(e) => e.stopPropagation()} 
-                        onClick={() => moveLayer(index, 'up')} 
-                        disabled={index === 0} 
-                        className="text-gray-400 hover:text-soprema-blue disabled:opacity-30 disabled:hover:text-gray-400 transition-colors p-0.5 bg-bg-panel-hover hover:bg-blue-50 rounded"
-                        title="Move Up"
-                      >
-                        <ChevronUp className="w-3.5 h-3.5" />
-                      </button>
-                      <button 
-                        onPointerDown={(e) => e.stopPropagation()} 
-                        onClick={() => moveLayer(index, 'down')} 
-                        disabled={index === localLayers.length - 1} 
-                        className="text-gray-400 hover:text-soprema-blue disabled:opacity-30 disabled:hover:text-gray-400 transition-colors p-0.5 bg-bg-panel-hover hover:bg-blue-50 rounded"
-                        title="Move Down"
-                      >
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    <button 
-                      onPointerDown={(e) => e.stopPropagation()} 
-                      onClick={() => removeLayer(layer.id)} 
-                      className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors"
-                      title="Remove Layer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </Reorder.Item>
-              ))}
-            </Reorder.Group>
-          )}
-        </div>
-
-        {/* Add Material */}
-        <div className="mt-auto pt-4 border-t border-border-main">
-          <label className="block text-sm font-medium text-text-secondary mb-2">Add Material</label>
-          
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search materials..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-soprema-blue text-sm"
-            />
-          </div>
-
-          <select 
-            className="w-full px-3 py-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-soprema-blue text-sm"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value as Category | 'All')}
-          >
-            <option value="All">All Categories</option>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {filteredMaterials.length === 0 ? (
-              <p className="text-sm text-text-muted text-center py-2">No materials found.</p>
-            ) : (
-              filteredMaterials.map(material => {
-                const isComparing = compareList.some(m => m.id === material.id);
-                return (
-                  <div
-                    key={material.id}
-                    className="w-full flex justify-between items-center px-3 py-2 border border-border-main rounded-md hover:border-soprema-blue hover:bg-blue-50 transition-colors group"
-                    onMouseMove={(e) => {
-                      setHoveredMaterial(material);
-                      setMousePos({ x: e.clientX, y: e.clientY });
-                    }}
-                    onMouseLeave={() => setHoveredMaterial(null)}
-                  >
-                    <div className="flex flex-col flex-1 cursor-pointer" onClick={() => addLayer(material)}>
-                      <span className="text-sm font-medium text-text-main">{material.name}</span>
-                      <span className="text-xs text-text-muted">${material.pricePerUnit.toFixed(2)} / {material.unit}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {material.productUrl && (
-                        <a 
-                          href={material.productUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-gray-400 hover:text-soprema-blue transition-colors"
-                          title="View product on Soprema website"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      )}
-                      <input 
-                        type="checkbox"
-                        checked={isComparing}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            if (compareList.length < 2) {
-                              setCompareList([...compareList, material]);
-                            }
-                          } else {
-                            setCompareList(compareList.filter(m => m.id !== material.id));
-                          }
-                        }}
-                        className="w-4 h-4 text-soprema-blue border-gray-300 rounded focus:ring-soprema-blue cursor-pointer"
-                        title={isComparing ? "Remove from comparison" : "Add to comparison (Max 2)"}
-                      />
-                      <button onClick={() => addLayer(material)} className="p-1 rounded hover:bg-blue-100 text-soprema-blue opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-          
-          {compareList.length > 0 && (
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md flex justify-between items-center">
-              <span className="text-xs font-medium text-soprema-blue">{compareList.length} / 2 selected for comparison</span>
-              <button 
-                onClick={() => setShowCompareModal(true)}
-                disabled={compareList.length < 2}
-                className="text-xs bg-soprema-blue text-white px-2 py-1 rounded disabled:opacity-50 hover:bg-blue-600 transition-colors"
-              >
-                Compare
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Hover Tooltip Portal */}
-      {hoveredMaterial && !showCompareModal && (
-        <div 
-          className="fixed z-[100] w-64 bg-soprema-black text-white text-xs rounded-md p-3 shadow-xl pointer-events-none"
-          style={{ 
-            left: mousePos.x + 15, 
-            top: mousePos.y + 15 > window.innerHeight - 120 ? mousePos.y - 100 : mousePos.y + 15 
-          }}
-        >
-          <p className="font-bold text-sm mb-1">{hoveredMaterial.name}</p>
-          <p className="text-gray-300 mb-2 leading-relaxed">{hoveredMaterial.description}</p>
-          <div className="flex justify-between items-center text-gray-400 border-t border-gray-700 pt-2 mt-2">
-            <span>Coverage:</span>
-            <span className="font-medium text-white">
-              {params.unitSystem === 'metric' 
-                ? `${(hoveredMaterial.coveragePerUnit * 0.092903).toFixed(1)} sq m` 
-                : `${hoveredMaterial.coveragePerUnit} sq ft`} / {hoveredMaterial.unit}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Comparison Modal */}
-      {showCompareModal && compareList.length === 2 && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
-          <div className="bg-bg-panel rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-border-main flex justify-between items-center bg-bg-panel-hover">
-              <h3 className="text-lg font-bold text-soprema-black">Product Comparison</h3>
-              <button onClick={() => setShowCompareModal(false)} className="text-text-muted hover:text-text-main p-1 rounded-md hover:bg-gray-200 transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="p-6 overflow-y-auto flex-1">
-              <div className="grid grid-cols-2 gap-8">
-                {/* Product 1 */}
-                <div className="flex flex-col">
-                  <div className="mb-4">
-                    <span className="text-xs font-bold text-soprema-blue uppercase tracking-wider">{compareList[0].category}</span>
-                    <div className="flex items-center gap-2 mt-1">
-                      <h4 className="text-xl font-bold text-text-main">{compareList[0].name}</h4>
-                      {compareList[0].productUrl && (
-                        <a href={compareList[0].productUrl} target="_blank" rel="noopener noreferrer" className="text-soprema-blue hover:text-blue-700 bg-blue-50 p-1 rounded transition-colors" title="View product page">
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      )}
-                    </div>
-                    <p className="text-sm text-text-muted mt-2">{compareList[0].description}</p>
-                  </div>
-                  
-                  <div className="bg-bg-panel-hover p-4 rounded-md border border-border-main mb-6">
-                    <div className="flex justify-between items-center mb-2 pb-2 border-b border-border-main">
-                      <span className="text-sm font-medium text-text-secondary">Price</span>
-                      <span className="text-sm font-bold text-text-main">${compareList[0].pricePerUnit.toFixed(2)} / {compareList[0].unit}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-text-secondary">Coverage</span>
-                      <span className="text-sm font-bold text-text-main">
-                        {params.unitSystem === 'metric' 
-                          ? `${(compareList[0].coveragePerUnit * 0.092903).toFixed(1)} sq m` 
-                          : `${compareList[0].coveragePerUnit} sq ft`} / {compareList[0].unit}
-                      </span>
-                    </div>
-                  </div>
-
-                  <h5 className="font-semibold text-text-main mb-3 border-b border-border-main pb-1">Technical Specifications</h5>
-                  <div className="space-y-2 mb-6">
-                    {compareList[0].techSpecs ? Object.entries(compareList[0].techSpecs).map(([key, val]) => (
-                      <div key={key} className="flex justify-between text-sm">
-                        <span className="text-text-muted">{key}:</span>
-                        <span className="font-medium text-text-main">{val}</span>
-                      </div>
-                    )) : <p className="text-sm text-text-muted italic">No technical specs available.</p>}
-                  </div>
-
-                  <h5 className="font-semibold text-text-main mb-3 border-b border-border-main pb-1">Certifications</h5>
-                  <div className="flex flex-wrap gap-2">
-                    {compareList[0].certifications ? compareList[0].certifications.map(cert => (
-                      <span key={cert} className="px-2 py-1 bg-blue-50 text-soprema-blue text-xs font-medium rounded border border-blue-100">
-                        {cert}
-                      </span>
-                    )) : <span className="text-sm text-text-muted italic">None</span>}
-                  </div>
-                </div>
-
-                {/* Product 2 */}
-                <div className="flex flex-col">
-                  <div className="mb-4">
-                    <span className="text-xs font-bold text-soprema-blue uppercase tracking-wider">{compareList[1].category}</span>
-                    <div className="flex items-center gap-2 mt-1">
-                      <h4 className="text-xl font-bold text-text-main">{compareList[1].name}</h4>
-                      {compareList[1].productUrl && (
-                        <a href={compareList[1].productUrl} target="_blank" rel="noopener noreferrer" className="text-soprema-blue hover:text-blue-700 bg-blue-50 p-1 rounded transition-colors" title="View product page">
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      )}
-                    </div>
-                    <p className="text-sm text-text-muted mt-2">{compareList[1].description}</p>
-                  </div>
-                  
-                  <div className="bg-bg-panel-hover p-4 rounded-md border border-border-main mb-6">
-                    <div className="flex justify-between items-center mb-2 pb-2 border-b border-border-main">
-                      <span className="text-sm font-medium text-text-secondary">Price</span>
-                      <span className="text-sm font-bold text-text-main">${compareList[1].pricePerUnit.toFixed(2)} / {compareList[1].unit}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-text-secondary">Coverage</span>
-                      <span className="text-sm font-bold text-text-main">
-                        {params.unitSystem === 'metric' 
-                          ? `${(compareList[1].coveragePerUnit * 0.092903).toFixed(1)} sq m` 
-                          : `${compareList[1].coveragePerUnit} sq ft`} / {compareList[1].unit}
-                      </span>
-                    </div>
-                  </div>
-
-                  <h5 className="font-semibold text-text-main mb-3 border-b border-border-main pb-1">Technical Specifications</h5>
-                  <div className="space-y-2 mb-6">
-                    {compareList[1].techSpecs ? Object.entries(compareList[1].techSpecs).map(([key, val]) => (
-                      <div key={key} className="flex justify-between text-sm">
-                        <span className="text-text-muted">{key}:</span>
-                        <span className="font-medium text-text-main">{val}</span>
-                      </div>
-                    )) : <p className="text-sm text-text-muted italic">No technical specs available.</p>}
-                  </div>
-
-                  <h5 className="font-semibold text-text-main mb-3 border-b border-border-main pb-1">Certifications</h5>
-                  <div className="flex flex-wrap gap-2">
-                    {compareList[1].certifications ? compareList[1].certifications.map(cert => (
-                      <span key={cert} className="px-2 py-1 bg-blue-50 text-soprema-blue text-xs font-medium rounded border border-blue-100">
-                        {cert}
-                      </span>
-                    )) : <span className="text-sm text-text-muted italic">None</span>}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+const inputClass =
+  "w-full mt-1 rounded-lg border border-border-main bg-bg-panel px-3 py-2 text-sm text-text-main focus:outline-none focus:ring-2 focus:ring-soprema-blue";
+export default function Sidebar({
+  params,
+  setParams,
+  layers,
+  setLayers,
+}: Props) {
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("All");
+  const [selected, setSelected] = useState<string[]>([]);
+  const compare = useRef<HTMLDialogElement>(null);
+  const unit = areaUnit(params.unitSystem);
+  const filtered = useMemo(
+    () =>
+      ACTIVE_MATERIALS.filter(
+        (m) =>
+          (category === "All" || m.category === category) &&
+          `${m.name} ${m.category} ${m.description}`
+            .toLowerCase()
+            .includes(query.toLowerCase()),
+      ),
+    [query, category],
   );
-});
+  const products = selected.map((id) =>
+    ACTIVE_MATERIALS.find((m) => m.id === id)!,
+  );
+  const patch = (value: Partial<RoofParams>) =>
+    setParams({ ...params, ...value });
+  const coverage = (m: Material) =>
+    m.coveragePerUnit == null
+      ? "Project input required"
+      : `${formatNumber(displayArea(m.coveragePerUnit, params.unitSystem))} ${unit} / ${m.unit}`;
+  const add = (material: Material) =>
+    setLayers((prev) =>
+      [
+        ...prev.slice().sort((a, b) => a.order - b.order),
+        { id: crypto.randomUUID(), material, order: prev.length },
+      ].map((l, order) => ({ ...l, order })),
+    );
+  const toggle = (id: string) =>
+    setSelected((prev) =>
+      prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : prev.length < 2
+          ? [...prev, id]
+          : prev,
+    );
+  return (
+    <aside className="w-full h-full overflow-y-auto bg-bg-panel border-r border-border-main text-text-main">
+      <section className="p-5 border-b border-border-main space-y-4">
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal size={18} className="text-soprema-blue" />
+          <h2 className="font-bold">Project parameters</h2>
+        </div>
+        <label className="block text-xs font-semibold">
+          Project name
+          <input
+            className={inputClass}
+            value={params.name || ""}
+            onChange={(e) => patch({ name: e.target.value })}
+            placeholder="Untitled roofing project"
+            maxLength={150}
+          />
+        </label>
+        <label className="block text-xs font-semibold">
+          Client
+          <input
+            className={inputClass}
+            value={params.client || ""}
+            onChange={(e) => patch({ client: e.target.value })}
+            maxLength={150}
+            placeholder="Client or organization"
+          />
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="text-xs font-semibold">
+            Roof area ({unit})
+            <input
+              type="number"
+              min="0.01"
+              max="100000000"
+              step="any"
+              className={inputClass}
+              value={Number(
+                displayArea(params.area, params.unitSystem).toFixed(6),
+              )}
+              onChange={(e) => {
+                const n = e.target.valueAsNumber;
+                if (Number.isFinite(n) && n > 0)
+                  patch({ area: inputArea(n, params.unitSystem) });
+              }}
+            />
+          </label>
+          <label className="text-xs font-semibold">
+            Area measurement
+            <select
+              className={inputClass}
+              value={params.areaBasis || "plan"}
+              onChange={(e) =>
+                patch({ areaBasis: e.target.value as "plan" | "surface" })
+              }
+            >
+              <option value="plan">Plan footprint</option>
+              <option value="surface">Measured surface</option>
+            </select>
+          </label>
+          <label className="text-xs font-semibold">
+            Pitch (rise / 12)
+            <input
+              type="number"
+              min="0"
+              max="24"
+              step="0.25"
+              className={inputClass}
+              value={params.pitch}
+              onChange={(e) => {
+                const n = e.target.valueAsNumber;
+                if (Number.isFinite(n) && n >= 0 && n <= 24)
+                  patch({ pitch: n });
+              }}
+            />
+          </label>
+          <label className="text-xs font-semibold">
+            Waste (%)
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              className={inputClass}
+              value={Number((params.wasteFactor * 100).toFixed(4))}
+              onChange={(e) => {
+                const n = e.target.valueAsNumber;
+                if (Number.isFinite(n) && n >= 0 && n <= 100)
+                  patch({ wasteFactor: n / 100 });
+              }}
+            />
+          </label>
+        </div>
+        <p className="text-xs text-text-muted">
+          Slope {formatNumber((params.pitch / 12) * 100)}% ·{" "}
+          {formatNumber((Math.atan(params.pitch / 12) * 180) / Math.PI)}°. Pitch
+          adjusts plan area only.
+        </p>
+        <label className="block text-xs font-semibold">
+          Project address
+          <input
+            className={inputClass}
+            value={params.location}
+            onChange={(e) => patch({ location: e.target.value })}
+            placeholder="Street, city, state"
+            maxLength={300}
+          />
+        </label>
+        <LocationPicker
+          coordinates={params.coordinates}
+          unitSystem={params.unitSystem}
+          onLocationSelect={(lat, lng) => patch({ coordinates: { lat, lng } })}
+        />
+        <label className="block text-xs font-semibold">
+          Project notes & client requirements
+          <textarea id="project-notes"
+            className={inputClass}
+            rows={4}
+            maxLength={20000}
+            value={params.projectNotes || ""}
+            onChange={(e) => patch({ projectNotes: e.target.value })}
+            placeholder="Access constraints, finish preferences, installation requirements…"
+          />
+        </label>
+      </section>
+      <section className="p-5 border-b border-border-main space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-bold flex gap-2 items-center">
+            <Layers3 size={18} className="text-soprema-blue" />
+            Material library
+          </h2>
+          <span className="text-xs text-text-muted">
+            {ACTIVE_MATERIALS.length} products
+          </span>
+        </div>
+        <a
+          href="https://www.soprema.us/products/market-segment/roofing/all-roofing-products"
+          target="_blank"
+          rel="noreferrer"
+          className="text-xs text-soprema-blue inline-flex items-center gap-1"
+        >
+          Full SOPREMA catalog <ExternalLink size={12} />
+        </a>
+        <p className="text-xs text-text-muted">
+          Curated product variants with source links. Add in installation order,
+          then arrange layers in the visualizer. Attachments and accessories
+          require separate review.
+        </p>
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-3 text-text-muted" />
+          <input
+            aria-label="Search materials by category or keyword"
+            className={inputClass + " pl-9 !mt-0"}
+            placeholder="Search products or categories"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        <select
+          aria-label="Product category"
+          className={inputClass}
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        >
+          <option>All</option>
+          {[...new Set(ACTIVE_MATERIALS.map((m) => m.category))].map((c) => (
+            <option key={c}>{c}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          disabled={selected.length !== 2}
+          onClick={() => compare.current?.showModal()}
+          className="w-full border border-soprema-blue text-soprema-blue rounded-lg py-2 text-xs font-bold disabled:opacity-40"
+        >
+          Compare selected products ({selected.length}/2)
+        </button>
+        {filtered.length === 0 && (
+          <p className="text-sm py-5 text-text-muted">
+            No matching products. Try another category or keyword.
+          </p>
+        )}
+        {filtered.map((m) => (
+          <article
+            key={m.id}
+            className="rounded-xl border border-border-main p-3 space-y-2 hover:border-soprema-blue transition-colors"
+          >
+            <div className="flex justify-between items-start gap-2">
+              <div>
+                <span className="text-[10px] uppercase tracking-wider text-text-muted">
+                  {m.category}
+                </span>
+                <a
+                  className="block text-sm font-bold text-soprema-blue hover:underline"
+                  href={m.productUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={`${m.description} Thickness: ${displayThickness(m.thicknessMm, params.unitSystem)}. Coverage: ${coverage(m)}. ${Object.entries(
+                    m.techSpecs || {},
+                  )
+                    .map(([k, v]) => `${k}: ${v}`)
+                    .join("; ")}`}
+                >
+                  {m.name} ↗
+                </a>
+              </div>
+              <button
+                onClick={() => add(m)}
+                type="button"
+                aria-label={`Add ${m.name}`} disabled={layers.length >= 100}
+                className="shrink-0 bg-soprema-blue text-white rounded-lg p-2 hover:opacity-80"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+            <p className="text-xs text-text-muted">{coverage(m)}</p>
+            <div className="flex justify-between gap-2 text-xs">
+              <label className="flex gap-2 items-center">
+                <input
+                  type="checkbox"
+                  checked={selected.includes(m.id)}
+                  disabled={selected.length === 2 && !selected.includes(m.id)}
+                  onChange={() => toggle(m.id)}
+                />
+                Compare
+              </label>
+              <span>
+                {params.useSamplePrices
+                  ? `${money(m.samplePricePerUnit)} sample`
+                  : "Supplier quote required"}
+              </span>
+            </div>
+            <details className="text-xs">
+              <summary className="cursor-pointer text-text-muted">
+                Technical specifications
+              </summary>
+              <div className="pt-2 space-y-1">
+                <p>{m.description}</p>
+                <p>
+                  Thickness:{" "}
+                  {displayThickness(m.thicknessMm, params.unitSystem)}
+                </p>
+                {Object.entries(m.techSpecs || {}).map(([k, v]) => (
+                  <p key={k}>
+                    {k}: {v}
+                  </p>
+                ))}
+                <p>{m.coverageNote}</p>
+                <a
+                  href={m.dataSheetUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-soprema-blue underline"
+                >
+                  Manufacturer data sheet
+                </a>
+              </div>
+            </details>
+          </article>
+        ))}
+      </section>
+      <ProjectStatistics params={params} layers={layers} />
+      <dialog
+        ref={compare}
+        className="m-auto w-[min(900px,95vw)] max-h-[90vh] overflow-auto rounded-2xl p-6 bg-bg-panel text-text-main backdrop:bg-black/50"
+        aria-labelledby="compare-title"
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h2 id="compare-title" className="font-bold text-lg">
+            Product comparison
+          </h2>
+          <button
+            autoFocus
+            aria-label="Close comparison"
+            onClick={() => compare.current?.close()}
+          >
+            <X />
+          </button>
+        </div>
+        <p className="text-xs text-text-muted mb-4">
+          Product-level attributes do not establish complete roof assembly
+          approval. EPD and HPD are disclosures, not certifications.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                <th className="text-left p-3">Specification</th>
+                {products.map((m) => (
+                  <th className="text-left p-3" key={m.id}>
+                    <a
+                      href={m.productUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-soprema-blue underline"
+                    >
+                      {m.name}
+                    </a>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["Category", (m: Material) => m.category],
+                [
+                  "Composition",
+                  (m: Material) => m.composition || "Not documented",
+                ],
+                [
+                  "Thickness",
+                  (m: Material) =>
+                    displayThickness(m.thicknessMm, params.unitSystem),
+                ],
+                ["Coverage", (m: Material) => coverage(m)],
+                [
+                  "Thermal resistance",
+                  (m: Material) =>
+                    m.rValue == null
+                      ? "Not documented"
+                      : params.unitSystem === "metric"
+                        ? `RSI ${formatNumber(m.rValue / 5.678263337)}`
+                        : `R ${formatNumber(m.rValue)}`,
+                ],
+                ["Supplier price", () => "Quote required"],
+                [
+                  "Sample allowance",
+                  (m: Material) =>
+                    `${money(m.samplePricePerUnit)} / ${m.unit} (illustrative)`,
+                ],
+                [
+                  "Technical details",
+                  (m: Material) =>
+                    Object.entries(m.techSpecs || {})
+                      .map(([k, v]) => `${k}: ${v}`)
+                      .join("; ") || "See data sheet",
+                ],
+                [
+                  "Coverage assumptions",
+                  (m: Material) =>
+                    m.coverageNote || "Published net package coverage",
+                ],
+              ].map(([label, value]) => (
+                <tr
+                  key={label as string}
+                  className="border-t border-border-main"
+                >
+                  <th className="text-left p-3 align-top font-medium">
+                    {label as string}
+                  </th>
+                  {products.map((m) => (
+                    <td className="p-3 align-top" key={m.id}>
+                      {(value as (m: Material) => string)(m)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              <tr className="border-t border-border-main">
+                <th className="p-3 text-left align-top">
+                  Environmental evidence
+                </th>
+                {products.map((m) => (
+                  <td key={m.id} className="p-3 align-top">
+                    {m.environmentalEvidence?.length
+                      ? m.environmentalEvidence.map((e) => (
+                          <p key={e.url}>
+                            <a
+                              href={e.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-soprema-blue underline"
+                            >
+                              {e.label}
+                            </a>{" "}
+                            ({e.kind})
+                            {e.validUntil && ` · expires ${e.validUntil}`}
+                          </p>
+                        ))
+                      : "No certification verified in this catalog; review manufacturer documents."}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </dialog>
+    </aside>
+  );
+}

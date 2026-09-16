@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import QRCode from 'react-qr-code';
 import { X, QrCode } from 'lucide-react';
 
@@ -8,11 +8,13 @@ interface QRCodeModalProps {
 }
 
 export default function QRCodeModal({ url, onClose }: QRCodeModalProps) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => { dialog.current?.showModal(); }, []);
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <dialog ref={dialog} onCancel={onClose} aria-label="Share via QR" className="m-auto max-h-[90dvh] rounded-lg bg-transparent p-0 text-text-main backdrop:bg-black/60">
       <div className="bg-bg-panel rounded-lg shadow-2xl max-w-sm w-full flex flex-col overflow-hidden">
         <div className="p-4 border-b border-border-main flex justify-between items-center bg-bg-panel-hover">
-          <h3 className="text-lg font-bold text-soprema-black flex items-center gap-2">
+          <h3 className="text-lg font-bold text-text-main flex items-center gap-2">
             <QrCode className="w-5 h-5 text-soprema-blue" /> Share via QR
           </h3>
           <button onClick={onClose} className="text-text-muted hover:text-text-main p-1 rounded-md hover:bg-gray-200 transition-colors">
@@ -26,6 +28,6 @@ export default function QRCodeModal({ url, onClose }: QRCodeModalProps) {
           </p>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

@@ -1,123 +1,86 @@
 import { useState, useCallback, useEffect } from 'react';
-import { collection, doc, setDoc, deleteDoc, getDocs, query } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, getDocs, query, where } from 'firebase/firestore';
+import type { User } from 'firebase/auth';
 import { db } from '../lib/firebase';
-import { SavedProject, RoofParams, Layer } from '../types';
+import type { SavedProject } from '../types';
+import { parseSavedProject } from '../lib/project';
 import { toast } from 'sonner';
 
-export function useProjectSync(user: any) {
+const KEY = 'soprema_projects';
+function readLocal(): SavedProject[] {
+  const raw = localStorage.getItem(KEY);
+  if (!raw) {
+    const old = localStorage.getItem('soprema-roof-config');
+    if (!old) return [];
+    const value = JSON.parse(old);
+    return [parseSavedProject({...value, id: 'legacy', name: 'Legacy project', date: new Date().toISOString(), thumbnail: ''})];
+  }
+  const value = JSON.parse(raw);
+  if (!Array.isArray(value)) throw new Error('Saved project data is invalid.');
+  return value.map(parseSavedProject);
+}
+function message(error: unknown) { return error instanceof Error ? error.message : 'Storage is unavailable.'; }
+export function useProjectSync(user: User | null) {
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
-
   const fetchProjects = useCallback(async () => {
     setIsSyncing(true);
-    let projects: SavedProject[] = [];
-
-    if (user) {
+    const projects = new Map<string, SavedProject>();
+    try { readLocal().forEach(project => projects.set(project.id, project)); }
+    catch (error) { toast.error(`Could not read device saves: ${message(error)} Existing data was preserved.`); }
+    if (user && db) {
       try {
-        const q = query(collection(db, 'projects'));
-        const querySnapshot = await getDocs(q);
-        querySnapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          if (data.userId === user.uid) {
-            projects.push(data as SavedProject);
-          }
+        const result = await getDocs(query(collection(db, 'projects'), where('userId', '==', user.uid)));
+        result.forEach(snapshot => {
+          try {
+            const project = parseSavedProject({...snapshot.data(), id: snapshot.id});
+            const local = projects.get(project.id);
+            if (!local || Date.parse(project.date) > Date.parse(local.date)) projects.set(project.id, project);
+          } catch { toast.error('A cloud project could not be read; its stored data was preserved.'); }
         });
-      } catch (err) {
-        console.error('Failed to load cloud projects', err);
-        toast.error('Failed to sync projects from cloud.');
-      }
+      } catch { toast.error('Cloud sync is unavailable. Device saves remain available.'); }
     }
-
-    // Always fetch local projects as a fallback/addition
-    const localStr = localStorage.getItem('soprema_projects');
-    const localProjects: SavedProject[] = localStr ? JSON.parse(localStr) : [];
-    
-    // Check old save format
-    const oldSave = localStorage.getItem('soprema-roof-config');
-    if (oldSave && localProjects.length === 0) {
-       try {
-         const parsed = JSON.parse(oldSave);
-         localProjects.push({
-           id: 'legacy',
-           name: 'Legacy Project',
-           date: new Date().toISOString(),
-           params: parsed.params,
-           layers: parsed.layers,
-           thumbnail: ''
-         });
-       } catch (e) {}
-    }
-
-    // Merge logic: prefer cloud if logged in, but we can just combine them for simplicity, avoiding dupes by ID
-    const merged = [...projects];
-    localProjects.forEach(lp => {
-      if (!merged.find(p => p.id === lp.id)) {
-        merged.push(lp);
-      }
-    });
-
-    setSavedProjects(merged.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    setSavedProjects([...projects.values()].sort((a, b) => Date.parse(b.date) - Date.parse(a.date)));
     setIsSyncing(false);
   }, [user]);
+  useEffect(() => { void fetchProjects(); }, [fetchProjects]);
 
-  useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
-
-  const saveProject = useCallback(async (project: SavedProject) => {
-    if (user) {
+  const saveProject = useCallback(async (input: SavedProject): Promise<boolean> => {
+    let project: SavedProject;
+    try {
+      project = parseSavedProject(input);
+      const existing = readLocal();
+      const updated = [...existing.filter(item => item.id !== project.id), project];
+      localStorage.setItem(KEY, JSON.stringify(updated));
+    } catch (error) {
+      toast.error(`Project was not saved: ${message(error)} Export JSON to keep a copy.`);
+      return false;
+    }
+    toast.success('Project saved on this device.');
+    if (user && db) {
       try {
-        await setDoc(doc(db, 'projects', project.id), {
-          ...project,
-          userId: user.uid
-        });
-        toast.success('Project saved to cloud!');
-      } catch (err) {
-        console.error('Cloud save failed', err);
-        toast.error('Failed to save to cloud, saving locally instead.');
-        saveLocally(project);
-      }
-    } else {
-      saveLocally(project);
-      toast.success('Project saved locally!');
+        // Firestore rejects undefined properties; JSON also strips incidental React state.
+        await setDoc(doc(db, 'projects', project.id), JSON.parse(JSON.stringify({...project, userId: user.uid})));
+        toast.success('Cloud copy synchronized.');
+      } catch { toast.error('Cloud sync failed. Your device copy is saved.'); }
     }
     await fetchProjects();
+    return true;
   }, [user, fetchProjects]);
-
-  const saveLocally = (project: SavedProject) => {
-    const existingStr = localStorage.getItem('soprema_projects');
-    const existing: SavedProject[] = existingStr ? JSON.parse(existingStr) : [];
-    const index = existing.findIndex(p => p.id === project.id);
-    if (index >= 0) existing[index] = project;
-    else existing.push(project);
-    localStorage.setItem('soprema_projects', JSON.stringify(existing));
-  };
-
-  const deleteProject = useCallback(async (id: string) => {
-    if (user) {
-      try {
-        await deleteDoc(doc(db, 'projects', id));
-        toast.success('Project deleted from cloud.');
-      } catch (err) {
-        console.error('Cloud delete failed', err);
-      }
+  const deleteProject = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      const existing = readLocal();
+      if (user && db) await deleteDoc(doc(db, 'projects', id));
+      localStorage.setItem(KEY, JSON.stringify(existing.filter(project => project.id !== id)));
+      // Prevent deleted migrated legacy data from appearing again.
+      if (id === 'legacy') localStorage.removeItem('soprema-roof-config');
+      await fetchProjects();
+      toast.success('Saved project deleted.');
+      return true;
+    } catch (error) {
+      toast.error(`Could not delete saved project: ${message(error)}`);
+      return false;
     }
-    
-    const existingStr = localStorage.getItem('soprema_projects');
-    if (existingStr) {
-      const existing: SavedProject[] = JSON.parse(existingStr);
-      const filtered = existing.filter(p => p.id !== id);
-      localStorage.setItem('soprema_projects', JSON.stringify(filtered));
-    }
-    
-    await fetchProjects();
   }, [user, fetchProjects]);
-
-  return {
-    savedProjects,
-    isSyncing,
-    saveProject,
-    deleteProject,
-    fetchProjects
-  };
+  return {savedProjects, isSyncing, saveProject, deleteProject, fetchProjects};
 }

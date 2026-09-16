@@ -1,444 +1,663 @@
-import { Material } from './types';
+import { Material } from "./types";
 
+// Coverage is net ft² per selected package; USD sample allowances are opt-in, not supplier prices.
 export const SOPREMA_MATERIALS: Material[] = [
-  // Vapor Barriers
   {
-    id: 'vb-01',
+    id: "sopravapr",
+    name: "SOPRAVAP’R®",
+    category: "Vapor Barrier",
+    productUrl: "https://www.soprema.us/products/sopravap-rr",
+    dataSheetUrl:
+      "https://my.assets-library.com/asset/27096eed-dbee-4607-b85d-ddcaf1772dd7/PDS-SOPRAVAP-R.pdf",
+    coveragePerUnit: 468,
+    thicknessMm: 0.8,
+    description:
+      "Self-adhering SBS-modified bitumen with a tri-laminated woven polyethylene facer.",
+    composition:
+      "Self-adhering SBS-modified bitumen with a tri-laminated woven polyethylene facer.",
+    unit: "roll",
+    pricePerUnit: null,
+    samplePricePerUnit: 160,
+    sourceDate: "2026-09-15",
+    estimateScope: "field",
+    colorHex: "#4d8dbf",
+    coverageNote: "Net coverage per roll.",
+    techSpecs: {
+      Application: "Self-adhered",
+    },
+  },
+  {
+    id: "sopra-iso-2in-4x8",
+    name: "SOPRA-ISO® · 2 in · 4 × 8 ft",
+    category: "Insulation",
+    productUrl: "https://www.soprema.us/products/sopra-isor",
+    dataSheetUrl:
+      "https://my.assets-library.com/asset/40afef80-504e-4174-a5f7-8830e05fd737/PDS-SOPRA-ISO.pdf",
+    coveragePerUnit: 32,
+    thicknessMm: 50.8,
+    description:
+      "Closed-cell polyisocyanurate foam bonded to reinforced facers.",
+    composition:
+      "Closed-cell polyisocyanurate foam bonded to reinforced facers.",
+    unit: "board",
+    pricePerUnit: null,
+    samplePricePerUnit: 50,
+    sourceDate: "2026-09-15",
+    estimateScope: "field",
+    colorHex: "#e6ce81",
+    rValue: 11.4,
+    techSpecs: {
+      "R-value": "11.4 at 2 inches",
+      "ASTM C1289": "Type II, Class 1",
+    },
+    environmentalEvidence: [
+      {
+        label: "GREENGUARD Gold",
+        kind: "certification",
+        validUntil: "2027-03-29",
+        url: "https://my.assets-library.com/asset/b972bf08-14f4-40c1-9fd7-76122cea0610/SOPRA-ISO-GREENGUARD-Gold-Certification-2026.pdf",
+      },
+    ],
+  },
+  {
+    id: "sopra-iso-plus-2in-4x8",
+    name: "SOPRA-ISO PLUS® · 2 in · 4 × 8 ft",
+    category: "Insulation",
+    productUrl: "https://www.soprema.us/products/sopra-iso-plusr",
+    dataSheetUrl:
+      "https://my.assets-library.com/asset/a303aebd-eb23-4b20-a23c-38269fa274a6/PDS-SOPRA-ISO-PLUS.pdf",
+    coveragePerUnit: 32,
+    thicknessMm: 50.8,
+    description:
+      "Closed-cell polyisocyanurate foam bonded to coated reinforced glass facers.",
+    composition:
+      "Closed-cell polyisocyanurate foam bonded to coated reinforced glass facers.",
+    unit: "board",
+    pricePerUnit: null,
+    samplePricePerUnit: 60,
+    sourceDate: "2026-09-15",
+    estimateScope: "field",
+    colorHex: "#e6ce81",
+    rValue: 11.4,
+    techSpecs: {
+      "R-value": "11.4 at 2 inches",
+      "ASTM C1289": "Type II, Class 2",
+    },
+    environmentalEvidence: [
+      {
+        label: "GREENGUARD Gold",
+        kind: "certification",
+        validUntil: "2027-03-29",
+        url: "https://my.assets-library.com/asset/b9cc315d-d4ba-4ccc-8af3-960ac5c0991f/SOPRA-ISO-PLUS-GREENGUARD-Gold-Certification-2026.pdf",
+      },
+    ],
+  },
+  {
+    id: "sopraboard-quarter-4x8",
+    name: "SOPRABOARD® · ¼ in · 4 × 8 ft",
+    category: "Coverboard",
+    productUrl: "https://www.soprema.us/products/sopraboard",
+    dataSheetUrl:
+      "https://my.assets-library.com/asset/e1f45a76-19b8-40d3-b524-df761d4ba60f/PDS-SOPRABOARD-1-4-IN-1-8-IN.pdf",
+    coveragePerUnit: 32,
+    thicknessMm: 6.35,
+    description:
+      "Asphalt and mineral core with fiberglass faces. Selected SKU 08423.",
+    composition:
+      "Asphalt and mineral core with fiberglass faces. Selected SKU 08423.",
+    unit: "board",
+    pricePerUnit: null,
+    samplePricePerUnit: 40,
+    sourceDate: "2026-09-15",
+    estimateScope: "field",
+    colorHex: "#685c4a",
+    weightKgM2: 9.9,
+  },
+  {
+    id: "sopralene-flam-stick",
+    name: "SOPRALENE® FLAM STICK",
+    category: "Base Ply",
+    productUrl: "https://www.soprema.us/products/sopralener-flam-stick",
+    dataSheetUrl:
+      "https://my.assets-library.com/asset/a761afb2-2c21-4ee1-94fe-42291ebb15c6/PDS-SOPRALENE-FLAM-STICK.pdf",
+    coveragePerUnit: 147.6,
+    thicknessMm: 2.6,
+    description:
+      "Polyester-reinforced SBS membrane with self-adhering underside and heat-weldable upper film.",
+    composition:
+      "Polyester-reinforced SBS membrane with self-adhering underside and heat-weldable upper film.",
+    unit: "roll",
+    pricePerUnit: null,
+    samplePricePerUnit: 160,
+    sourceDate: "2026-09-15",
+    estimateScope: "field",
+    colorHex: "#454e53",
+  },
+  {
+    id: "sopralene-flam-180",
+    name: "SOPRALENE® FLAM 180",
+    category: "Base Ply",
+    productUrl: "https://www.soprema.us/products/sopralener-flam-180",
+    dataSheetUrl:
+      "https://my.assets-library.com/asset/1da79a61-878e-4b2c-86ba-6a94188db7f0/PDS-SOPRALENE-FLAM-180.pdf",
+    coveragePerUnit: 98,
+    thicknessMm: 3,
+    description:
+      "Polyester-reinforced SBS-modified bitumen membrane for heat-welded application.",
+    composition:
+      "Polyester-reinforced SBS-modified bitumen membrane for heat-welded application.",
+    unit: "roll",
+    pricePerUnit: null,
+    samplePricePerUnit: 150,
+    sourceDate: "2026-09-15",
+    estimateScope: "field",
+    colorHex: "#454e53",
+  },
+  {
+    id: "sopralene-flam-180-fr-plus-gr",
+    name: "SOPRALENE® FLAM 180 FR+ GR · WH",
+    category: "Cap Sheet",
+    productUrl: "https://www.soprema.us/products/sopralener-flam-180-fr-gr",
+    dataSheetUrl:
+      "https://my.assets-library.com/asset/48d9561b-bfc0-4d94-ac4d-917d1cab4001/PDS-SOPRALENE-FLAM-180-FR-GR.pdf",
+    coveragePerUnit: 98,
+    thicknessMm: 4,
+    description:
+      "Polyester-reinforced SBS cap sheet with ceramic granules. White SKU 01526.",
+    composition:
+      "Polyester-reinforced SBS cap sheet with ceramic granules. White SKU 01526.",
+    unit: "roll",
+    pricePerUnit: null,
+    samplePricePerUnit: 190,
+    sourceDate: "2026-09-15",
+    estimateScope: "field",
+    colorHex: "#c6c9ca",
+    techSpecs: {
+      "Initial SRI": "25 (WH 01526)",
+      Application: "Heat-welded",
+    },
+  },
+  {
+    id: "sentinel-p150",
+    name: "SENTINEL® P150 · White P302",
+    category: "PVC Membrane",
+    productUrl: "https://www.soprema.us/products/sentinelr-p150",
+    dataSheetUrl:
+      "https://my.assets-library.com/asset/297ee552-1bdf-449e-be79-7e3bc1debbb0/PDS-SENTINEL-P150.pdf",
+    coveragePerUnit: null,
+    thicknessMm: 1.5,
+    description:
+      "Polyester-reinforced PVC membrane. Selected white P302, 60 mil.",
+    composition:
+      "Polyester-reinforced PVC membrane. Selected white P302, 60 mil.",
+    unit: "roll",
+    pricePerUnit: null,
+    samplePricePerUnit: 1300,
+    sourceDate: "2026-09-15",
+    estimateScope: "field",
+    colorHex: "#eef0f0",
+    coverageNote:
+      "10 × 100 ft roll is gross area. Enter net coverage after laps/layout.",
+    techSpecs: {
+      "Initial SRI": "108",
+      "Aged SRI": "90",
+    },
+    environmentalEvidence: [
+      {
+        label: "NSF/ANSI 347 Gold",
+        kind: "certification",
+        validUntil: "2027-12-31",
+        url: "https://my.assets-library.com/asset/b8e15cdb-e844-408f-b824-f089695089c0/NSF-347-SENTINEL-PVC.pdf",
+      },
+    ],
+  },
+  {
+    id: "alsan-rs-230-flash",
+    name: "ALSAN® RS 230 FLASH · 12 kg",
+    category: "Flashing",
+    productUrl: "https://www.soprema.us/products/alsanr-rs-230-flash",
+    dataSheetUrl:
+      "https://my.assets-library.com/asset/aec5ce3b-5176-4ad1-8ea6-fa6dd878aaf9/PDS-ALSAN-RS-230-FLASH.pdf",
+    coveragePerUnit: 40,
+    thicknessMm: null,
+    description: "PMMA flashing resin; separate fleece and catalyst required.",
+    composition: "PMMA flashing resin; separate fleece and catalyst required.",
+    unit: "pail",
+    pricePerUnit: null,
+    samplePricePerUnit: 320,
+    sourceDate: "2026-09-15",
+    estimateScope: "detail",
+    colorHex: "#6e98ae",
+    coverageBasis: "system",
+    vocGramsPerLiter: 5,
+    coverageNote:
+      "40 ft² per 12 kg pail for full system on sanded base; adjust for substrate.",
+    techSpecs: {
+      VOC: "< 5 g/L",
+    },
+  },
+  {
+    id: "duotack-365",
+    name: "DUOTACK® 365",
+    category: "Adhesive/Primer",
+    productUrl: "https://www.soprema.us/products/duotackr-365",
+    dataSheetUrl:
+      "https://my.assets-library.com/asset/f436572c-5d91-45be-910a-e880775066d3/PDS-DUOTACK-365.pdf",
+    coveragePerUnit: null,
+    thicknessMm: null,
+    description: "Two-component polyurethane adhesive, ribbon applied.",
+    composition: "Two-component polyurethane adhesive, ribbon applied.",
+    unit: "cartridge",
+    pricePerUnit: null,
+    samplePricePerUnit: 45,
+    sourceDate: "2026-09-15",
+    estimateScope: "interface",
+    colorHex: "#b59362",
+    vocGramsPerLiter: 0,
+    coverageNote:
+      "Enter project coverage per cartridge from approved ribbon spacing; published range 100–150 ft².",
+    techSpecs: {
+      VOC: "0 g/L for each component",
+    },
+  },
+  {
+    id: "vb-01",
     name: "SOPRAVAP'R",
-    productUrl: 'https://soprema.us/products/sopravap-r',
-    category: 'Vapor Barrier',
-    description: 'Self-adhesive vapor barrier membrane composed of a tri-laminated woven polyethylene.',
-    unit: 'Roll',
-    coveragePerUnit: 400,
-    pricePerUnit: 115.00,
-    colorHex: '#60a5fa', // blue-400
-    techSpecs: { Thickness: '31 mils', 'Permeance': '< 0.02 perm', 'Tensile Strength': '45 lbf/in' },
-    certifications: ['FM Approved', 'UL Classified']
+    category: "Vapor Barrier",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Roll",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'vb-02',
-    name: 'SOPRAVAP® STICK SARKING',
-    productUrl: 'https://soprema.us/products/sopravap-stick-sarking',
-    category: 'Vapor Barrier',
-    description: 'Self-adhesive SBS elastomeric bitumen water vapour control layer.',
-    unit: 'Roll',
-    coveragePerUnit: 200,
-    pricePerUnit: 125.00,
-    colorHex: '#3b82f6', // blue-500
-    techSpecs: { Thickness: '1.5 mm', 'Tensile Strength': '300 N/50mm', 'Elongation': '2%' },
-    certifications: ['CE Marked', 'FM Approved']
+    id: "vb-02",
+    name: "SOPRAVAP® STICK SARKING",
+    category: "Vapor Barrier",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Roll",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'vb-03',
-    name: 'ELASTOPHENE® SP 3.0',
-    productUrl: 'https://soprema.us/products/elastophene-sp-3-0',
-    category: 'Vapor Barrier',
-    description: 'SBS-modified bitumen membrane with a glass mat reinforcement used as a vapor barrier.',
-    unit: 'Roll',
-    coveragePerUnit: 100,
-    pricePerUnit: 85.00,
-    colorHex: '#1e3a8a', // blue-900
-    techSpecs: { Thickness: '3.0 mm', 'Tensile Strength': '85 lbf/in', 'Tear Resistance': '110 lbf' },
-    certifications: ['UL Classified', 'Miami-Dade NOA']
+    id: "vb-03",
+    name: "ELASTOPHENE® SP 3.0",
+    category: "Vapor Barrier",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Roll",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'vb-04',
+    id: "vb-04",
     name: "SOPRAVAP'R LITE",
-    productUrl: 'https://soprema.us/products/sopravap-r-lite',
-    category: 'Vapor Barrier',
-    description: 'Lightweight self-adhesive vapor barrier with an aluminum foil face.',
-    unit: 'Roll',
-    coveragePerUnit: 500,
-    pricePerUnit: 105.00,
-    colorHex: '#93c5fd', // blue-300
-    techSpecs: { Thickness: '16 mils', 'Permeance': '< 0.01 perm', 'Elongation': '20%' },
-    certifications: ['FM Approved']
-  },
-
-  // Insulation
-  {
-    id: 'in-01',
-    name: 'SOPRA-ISO® Polyiso Board',
-    productUrl: 'https://soprema.us/products/sopra-iso-polyiso-board',
-    category: 'Insulation',
-    description: 'Rigid thermal insulation board with closed-cell polyisocyanurate foam core.',
-    unit: 'Board (4x8)',
-    coveragePerUnit: 32,
-    pricePerUnit: 45.00,
-    colorHex: '#fef08a', // yellow-200
-    techSpecs: { 'R-Value': '5.7 per inch', 'Compressive Strength': '20 psi', Thickness: '2.0 inch' },
-    certifications: ['GREENGUARD', 'LEED Eligible']
+    category: "Vapor Barrier",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Roll",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'in-02',
-    name: 'SOPRA-ISO® PLUS',
-    productUrl: 'https://soprema.us/products/sopra-iso-plus',
-    category: 'Insulation',
-    description: 'Premium closed-cell polyisocyanurate foam core bonded to glass fiber-reinforced facers.',
-    unit: 'Board (4x8)',
-    coveragePerUnit: 32,
-    pricePerUnit: 50.00,
-    colorHex: '#facc15', // yellow-400
-    techSpecs: { 'R-Value': '6.0 per inch', 'Compressive Strength': '25 psi', Thickness: '2.0 inch' },
-    certifications: ['GREENGUARD', 'FM Approved', 'UL Classified']
+    id: "in-01",
+    name: "SOPRA-ISO® Polyiso Board",
+    category: "Insulation",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Board (4x8)",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'in-03',
-    name: 'SOPRA-XPS® 20',
-    productUrl: 'https://soprema.us/products/sopra-xps-20',
-    category: 'Insulation',
-    description: 'Extruded polystyrene (XPS) rigid foam insulation board, 20 psi.',
-    unit: 'Board (4x8)',
-    coveragePerUnit: 32,
-    pricePerUnit: 52.00,
-    colorHex: '#bfdbfe', // blue-200
-    techSpecs: { 'R-Value': '5.0 per inch', 'Compressive Strength': '20 psi', 'Water Absorption': '< 0.3%' },
-    certifications: ['Energy Star', 'LEED Eligible']
+    id: "in-02",
+    name: "SOPRA-ISO® PLUS",
+    category: "Insulation",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Board (4x8)",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'in-04',
-    name: 'SOPRA-XPS® 40',
-    productUrl: 'https://soprema.us/products/sopra-xps-40',
-    category: 'Insulation',
-    description: 'High-density extruded polystyrene (XPS) rigid foam insulation board, 40 psi.',
-    unit: 'Board (4x8)',
-    coveragePerUnit: 32,
-    pricePerUnit: 68.00,
-    colorHex: '#60a5fa', // blue-400
-    techSpecs: { 'R-Value': '5.0 per inch', 'Compressive Strength': '40 psi', 'Water Absorption': '< 0.3%' },
-    certifications: ['Energy Star', 'LEED Eligible']
+    id: "in-03",
+    name: "SOPRA-XPS® 20",
+    category: "Insulation",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Board (4x8)",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'in-05',
-    name: 'SOPRA-XPS® 60',
-    productUrl: 'https://soprema.us/products/sopra-xps-60',
-    category: 'Insulation',
-    description: 'Heavy-duty high-density extruded polystyrene (XPS), 60 psi for heavy traffic areas.',
-    unit: 'Board (4x8)',
-    coveragePerUnit: 32,
-    pricePerUnit: 85.00,
-    colorHex: '#3b82f6', // blue-500
-    techSpecs: { 'R-Value': '5.0 per inch', 'Compressive Strength': '60 psi', 'Water Absorption': '< 0.3%' },
-    certifications: ['Energy Star', 'LEED Eligible']
-  },
-
-  // Coverboards
-  {
-    id: 'cb-01',
-    name: 'SOPRABOARD®',
-    productUrl: 'https://soprema.us/products/sopraboard',
-    category: 'Coverboard',
-    description: 'Semi-rigid, asphaltic roofing substrate board.',
-    unit: 'Board (4x4)',
-    coveragePerUnit: 16,
-    pricePerUnit: 22.00,
-    colorHex: '#4b5563', // gray-600
-    techSpecs: { Thickness: '1/8 inch', Weight: '1.2 lb/sq ft', 'Fire Rating': 'Class A' },
-    certifications: ['UL Classified', 'FM Approved']
+    id: "in-04",
+    name: "SOPRA-XPS® 40",
+    category: "Insulation",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Board (4x8)",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'cb-02',
+    id: "in-05",
+    name: "SOPRA-XPS® 60",
+    category: "Insulation",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Board (4x8)",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
+  },
+  {
+    id: "cb-01",
+    name: "SOPRABOARD®",
+    category: "Coverboard",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Board (4x4)",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
+  },
+  {
+    id: "cb-02",
     name: "PROTECT'R®",
-    productUrl: 'https://soprema.us/products/protect-r',
-    category: 'Coverboard',
-    description: 'High-density polyisocyanurate coverboard for increased impact resistance.',
-    unit: 'Board (4x8)',
-    coveragePerUnit: 32,
-    pricePerUnit: 35.00,
-    colorHex: '#9ca3af', // gray-400
-    techSpecs: { Thickness: '0.5 inch', 'Compressive Strength': '100 psi', 'R-Value': '2.5' },
-    certifications: ['FM Approved', 'UL Class A']
+    category: "Coverboard",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Board (4x8)",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'cb-03',
-    name: 'SOPRA-CELLULOSE CB',
-    productUrl: 'https://soprema.us/products/sopra-cellulose-cb',
-    category: 'Coverboard',
-    description: 'High-density cellulose fiber coverboard for acoustic dampening.',
-    unit: 'Board (4x8)',
-    coveragePerUnit: 32,
-    pricePerUnit: 30.00,
-    colorHex: '#6b7280', // gray-500
-    techSpecs: { Thickness: '0.5 inch', 'Density': '18 lb/ft3', 'Acoustic Rating': 'STC 50+' },
-    certifications: ['EcoLogo', 'FSC Certified']
-  },
-
-  // Base Plys
-  {
-    id: 'bp-01',
-    name: 'ELASTOPHENE® Base Sheet',
-    productUrl: 'https://soprema.us/products/elastophene-base-sheet',
-    category: 'Base Ply',
-    description: 'SBS-modified bitumen base ply membrane with a glass mat reinforcement.',
-    unit: 'Roll',
-    coveragePerUnit: 150,
-    pricePerUnit: 85.00,
-    colorHex: '#1f2937', // gray-800
-    techSpecs: { Thickness: '2.2 mm', Reinforcement: 'Glass Mat', 'Tensile Strength': '85 lbf/in' },
-    certifications: ['FM Approved', 'UL Classified']
+    id: "cb-03",
+    name: "SOPRA-CELLULOSE CB",
+    category: "Coverboard",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Board (4x8)",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'bp-02',
-    name: 'SOPRALENE® FLAM 180',
-    productUrl: 'https://soprema.us/products/sopralene-flam-180',
-    category: 'Base Ply',
-    description: 'SBS-modified bitumen membrane reinforced with non-woven polyester.',
-    unit: 'Roll',
-    coveragePerUnit: 100,
-    pricePerUnit: 95.00,
-    colorHex: '#111827', // gray-900
-    techSpecs: { Thickness: '3.0 mm', Reinforcement: 'Non-woven Polyester', 'Tensile Strength': '110 lbf/in' },
-    certifications: ['FM Approved', 'Miami-Dade NOA']
+    id: "bp-01",
+    name: "ELASTOPHENE® Base Sheet",
+    category: "Base Ply",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Roll",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'bp-03',
-    name: 'ELASTOPHENE® 180 PS',
-    productUrl: 'https://soprema.us/products/elastophene-180-ps',
-    category: 'Base Ply',
-    description: 'SBS-modified bitumen membrane, self-adhesive, with polyolephine film.',
-    unit: 'Roll',
-    coveragePerUnit: 100,
-    pricePerUnit: 105.00,
-    colorHex: '#374151', // gray-700
-    techSpecs: { Thickness: '3.0 mm', Reinforcement: 'Polyester', 'Application': 'Self-Adhered' },
-    certifications: ['UL Classified', 'CRRC Listed']
+    id: "bp-02",
+    name: "SOPRALENE® FLAM 180",
+    category: "Base Ply",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Roll",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'bp-04',
-    name: 'COLPHENE® 3000',
-    productUrl: 'https://soprema.us/products/colphene-3000',
-    category: 'Base Ply',
-    description: 'Self-adhesive SBS-modified waterproofing membrane for foundation and plaza decks.',
-    unit: 'Roll',
-    coveragePerUnit: 150,
-    pricePerUnit: 135.00,
-    colorHex: '#0f172a', // slate-900
-    techSpecs: { Thickness: '60 mils', 'Tensile Strength': '40 lbf/in', 'Elongation': '200%' },
-    certifications: ['ICC-ES Listed']
+    id: "bp-03",
+    name: "ELASTOPHENE® 180 PS",
+    category: "Base Ply",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Roll",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'bp-05',
-    name: 'SOPRAFIX® BASE 611',
-    productUrl: 'https://soprema.us/products/soprafix-base-611',
-    category: 'Base Ply',
-    description: 'Mechanically fastened SBS-modified bitumen base ply.',
-    unit: 'Roll',
-    coveragePerUnit: 100,
-    pricePerUnit: 90.00,
-    colorHex: '#1e293b', // slate-800
-    techSpecs: { Thickness: '3.0 mm', Reinforcement: 'Polyester/Glass Composite', 'Fastener Spacing': '12 inches' },
-    certifications: ['FM 1-90', 'UL Classified']
-  },
-
-  // Cap Sheets
-  {
-    id: 'cs-01',
-    name: 'SOPRALENE® FLAM 180 FR GR',
-    productUrl: 'https://soprema.us/products/sopralene-flam-180-fr-gr',
-    category: 'Cap Sheet',
-    description: 'Fire retardant, granulated SBS-modified bitumen cap sheet.',
-    unit: 'Roll',
-    coveragePerUnit: 100,
-    pricePerUnit: 110.00,
-    colorHex: '#f3f4f6', // Light gray with granules
-    techSpecs: { Thickness: '4.0 mm', Surface: 'Ceramic Granules', 'Fire Resistance': 'Class A' },
-    certifications: ['UL Class A', 'FM Approved', 'CRRC Listed']
+    id: "bp-04",
+    name: "COLPHENE® 3000",
+    category: "Base Ply",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Roll",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'cs-02',
-    name: 'SOPRALENE® FLAM 250 FR GR',
-    productUrl: 'https://soprema.us/products/sopralene-flam-250-fr-gr',
-    category: 'Cap Sheet',
-    description: 'Heavy-duty fire retardant, granulated SBS-modified bitumen cap sheet for high traffic.',
-    unit: 'Roll',
-    coveragePerUnit: 75,
-    pricePerUnit: 130.00,
-    colorHex: '#e5e7eb', // gray-200
-    techSpecs: { Thickness: '4.5 mm', 'Tear Resistance': '140 lbf', 'Fire Resistance': 'Class A' },
-    certifications: ['UL Class A', 'FM Approved', 'Miami-Dade NOA']
+    id: "bp-05",
+    name: "SOPRAFIX® BASE 611",
+    category: "Base Ply",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Roll",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'cs-03',
-    name: 'ELASTOPHENE® FLAM FR GR',
-    productUrl: 'https://soprema.us/products/elastophene-flam-fr-gr',
-    category: 'Cap Sheet',
-    description: 'SBS-modified bitumen cap sheet reinforced with a glass mat and covered in granules.',
-    unit: 'Roll',
-    coveragePerUnit: 100,
-    pricePerUnit: 95.00,
-    colorHex: '#d1d5db', // gray-300
-    techSpecs: { Thickness: '3.5 mm', Reinforcement: 'Glass Mat', 'Fire Resistance': 'Class A' },
-    certifications: ['UL Class A', 'FM Approved']
+    id: "cs-01",
+    name: "SOPRALENE® FLAM 180 FR GR",
+    category: "Cap Sheet",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Roll",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'cs-04',
-    name: 'SOPRASTAR® FLAM',
-    productUrl: 'https://soprema.us/products/soprastar-flam',
-    category: 'Cap Sheet',
-    description: 'Highly reflective SBS-modified bitumen cap sheet with a brilliant white aluminum foil face.',
-    unit: 'Roll',
-    coveragePerUnit: 100,
-    pricePerUnit: 145.00,
-    colorHex: '#ffffff', // white
-    techSpecs: { Thickness: '3.0 mm', 'Solar Reflectance': '0.84', 'Thermal Emittance': '0.88' },
-    certifications: ['Energy Star', 'CRRC Listed', 'LEED Eligible']
+    id: "cs-02",
+    name: "SOPRALENE® FLAM 250 FR GR",
+    category: "Cap Sheet",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Roll",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'cs-05',
-    name: 'FLAGON® SR (PVC)',
-    productUrl: 'https://soprema.us/products/flagon-sr-pvc',
-    category: 'Cap Sheet',
-    description: 'Synthetic single-ply PVC membrane, UV resistant.',
-    unit: 'Roll',
-    coveragePerUnit: 400,
-    pricePerUnit: 320.00,
-    colorHex: '#f8fafc', // slate-50
-    techSpecs: { Thickness: '60 mil', 'Tear Resistance': '250 N', 'Solar Reflectance': '0.86' },
-    certifications: ['Energy Star', 'CRRC Listed', 'LEED Eligible']
+    id: "cs-03",
+    name: "ELASTOPHENE® FLAM FR GR",
+    category: "Cap Sheet",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Roll",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'cs-06',
-    name: 'FLAGON® EP/PR (TPO)',
-    productUrl: 'https://soprema.us/products/flagon-ep-pr-tpo',
-    category: 'Cap Sheet',
-    description: 'Synthetic single-ply TPO membrane, eco-friendly and highly reflective.',
-    unit: 'Roll',
-    coveragePerUnit: 400,
-    pricePerUnit: 340.00,
-    colorHex: '#f9fafb', // gray-50
-    techSpecs: { Thickness: '60 mil', 'Elongation': '600%', 'Solar Reflectance': '0.88' },
-    certifications: ['Energy Star', 'FM Approved']
+    id: "cs-04",
+    name: "SOPRASTAR® FLAM",
+    category: "Cap Sheet",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Roll",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'cs-07',
-    name: 'ALSAN® RS 230 Field',
-    productUrl: 'https://soprema.us/products/alsan-rs-230-field',
-    category: 'Cap Sheet',
-    description: 'Rapid-setting PMMA liquid-applied membrane.',
-    unit: 'Pail (5 Gal)',
-    coveragePerUnit: 50,
-    pricePerUnit: 215.00,
-    colorHex: '#cbd5e1', // slate-300
-    techSpecs: { 'Cure Time': '2 Hours', 'Elongation': '250%', 'Tensile Strength': '3.5 MPa' },
-    certifications: ['BBA Approved', 'FM Approved']
+    id: "cs-05",
+    name: "FLAGON® SR (PVC)",
+    category: "Cap Sheet",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Roll",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'cs-08',
-    name: 'ALSAN® RS 280 Field',
-    productUrl: 'https://soprema.us/products/alsan-rs-280-field',
-    category: 'Cap Sheet',
-    description: 'High-performance, rapid-setting PMMA liquid-applied membrane for extreme durability.',
-    unit: 'Pail (5 Gal)',
-    coveragePerUnit: 50,
-    pricePerUnit: 245.00,
-    colorHex: '#94a3b8', // slate-400
-    techSpecs: { 'Cure Time': '1 Hour', 'Traffic': 'Heavy Pedestrian/Vehicular', 'Tensile Strength': '4.0 MPa' },
-    certifications: ['FM Approved', 'UL Class A']
+    id: "cs-06",
+    name: "FLAGON® EP/PR (TPO)",
+    category: "Cap Sheet",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Roll",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'cs-09',
-    name: 'ALSAN® COATING SIL 402',
-    productUrl: 'https://soprema.us/products/alsan-coating-sil-402',
-    category: 'Cap Sheet',
-    description: 'High solids silicone roof coating providing superior weatherproofing and UV protection.',
-    unit: 'Pail (5 Gal)',
-    coveragePerUnit: 250,
-    pricePerUnit: 180.00,
-    colorHex: '#ffffff', // white
-    techSpecs: { 'Solids by Volume': '92%', 'Elongation': '200%', 'Solar Reflectance': '0.89' },
-    certifications: ['Energy Star', 'CRRC Listed']
+    id: "cs-07",
+    name: "ALSAN® RS 230 Field",
+    category: "Cap Sheet",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Pail (5 Gal)",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'cs-10',
-    name: 'SOPRANATURE® FLAM',
-    productUrl: 'https://soprema.us/products/sopranature-flam',
-    category: 'Cap Sheet',
-    description: 'Root-resistant SBS-modified bitumen cap sheet specifically designed for vegetative green roofs.',
-    unit: 'Roll',
-    coveragePerUnit: 100,
-    pricePerUnit: 135.00,
-    colorHex: '#a3e635', // lime-400
-    techSpecs: { Thickness: '4.0 mm', 'Root Resistance': 'FLL Certified', 'Reinforcement': 'Polyester' },
-    certifications: ['FLL Certified', 'FM Approved']
-  },
-
-  // Adhesives/Primers
-  {
-    id: 'ad-01',
-    name: 'ELASTOCOL® 500 Primer',
-    productUrl: 'https://soprema.us/products/elastocol-500-primer',
-    category: 'Adhesive/Primer',
-    description: 'Asphalt primer used to prepare surfaces before applying heat-welded membranes.',
-    unit: 'Pail (5 Gal)',
-    coveragePerUnit: 500,
-    pricePerUnit: 75.00,
-    colorHex: '#000000', // black
-    techSpecs: { 'VOC Content': '< 350 g/L', 'Drying Time': '2-4 Hours', 'Solids by Weight': '45%' },
-    certifications: ['SCAQMD Compliant']
+    id: "cs-08",
+    name: "ALSAN® RS 280 Field",
+    category: "Cap Sheet",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Pail (5 Gal)",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'ad-02',
-    name: 'ELASTOCOL® 350 Primer',
-    productUrl: 'https://soprema.us/products/elastocol-350-primer',
-    category: 'Adhesive/Primer',
-    description: 'Premium elastomeric asphalt primer with quick drying time.',
-    unit: 'Pail (5 Gal)',
-    coveragePerUnit: 500,
-    pricePerUnit: 85.00,
-    colorHex: '#18181b', // zinc-900
-    techSpecs: { 'VOC Content': '< 250 g/L', 'Drying Time': '1-2 Hours', 'Solids by Weight': '50%' },
-    certifications: ['SCAQMD Compliant']
+    id: "cs-09",
+    name: "ALSAN® COATING SIL 402",
+    category: "Cap Sheet",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Pail (5 Gal)",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'ad-03',
-    name: 'DUOTACK® Insulation Adhesive',
-    productUrl: 'https://soprema.us/products/duotack-insulation-adhesive',
-    category: 'Adhesive/Primer',
-    description: 'Low-rise, two-component polyurethane adhesive for securing insulation and coverboards.',
-    unit: 'Cartridge',
-    coveragePerUnit: 200,
-    pricePerUnit: 65.00,
-    colorHex: '#fcd34d', // amber
-    techSpecs: { 'Cure Time': '15-30 Minutes', 'Application Temp': '0°C to 35°C', 'VOC Content': '0 g/L' },
-    certifications: ['GREENGUARD', 'Low VOC']
+    id: "cs-10",
+    name: "SOPRANATURE® FLAM",
+    category: "Cap Sheet",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Roll",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'ad-04',
-    name: 'DUOTACK® 365',
-    productUrl: 'https://soprema.us/products/duotack-365',
-    category: 'Adhesive/Primer',
-    description: 'All-weather, two-component polyurethane adhesive. Can be applied in freezing temperatures.',
-    unit: 'Cartridge',
-    coveragePerUnit: 200,
-    pricePerUnit: 72.00,
-    colorHex: '#fbbf24', // amber-400
-    techSpecs: { 'Cure Time': '15-30 Minutes', 'Application Temp': '-10°C to 35°C', 'VOC Content': '0 g/L' },
-    certifications: ['GREENGUARD Gold', 'Low VOC']
+    id: "ad-01",
+    name: "ELASTOCOL® 500 Primer",
+    category: "Adhesive/Primer",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Pail (5 Gal)",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'ad-05',
-    name: 'COLPLY® EF Adhesive',
-    productUrl: 'https://soprema.us/products/colply-ef-adhesive',
-    category: 'Adhesive/Primer',
-    description: 'Polymeric roofing adhesive for SBS-modified bitumen membranes.',
-    unit: 'Pail (5 Gal)',
-    coveragePerUnit: 150,
-    pricePerUnit: 110.00,
-    colorHex: '#27272a', // zinc-800
-    techSpecs: { 'Cure Time': '24-48 Hours', 'VOC Content': '< 250 g/L', 'Application': 'Squeegee or Trowel' },
-    certifications: ['FM Approved']
+    id: "ad-02",
+    name: "ELASTOCOL® 350 Primer",
+    category: "Adhesive/Primer",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Pail (5 Gal)",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
   },
   {
-    id: 'ad-06',
-    name: 'ALSAN® RS 222 PRIMER',
-    productUrl: 'https://soprema.us/products/alsan-rs-222-primer',
-    category: 'Adhesive/Primer',
-    description: 'Rapid-curing PMMA primer for asphalt and concrete surfaces.',
-    unit: 'Pail (5 Gal)',
-    coveragePerUnit: 250,
-    pricePerUnit: 195.00,
-    colorHex: '#e2e8f0', // slate-200
-    techSpecs: { 'Cure Time': '30 Minutes', 'VOC Content': '< 100 g/L', 'Application Temp': '-5°C to 35°C' },
-    certifications: ['Low VOC', 'BBA Approved']
-  }
+    id: "ad-03",
+    name: "DUOTACK® Insulation Adhesive",
+    category: "Adhesive/Primer",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Cartridge",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
+  },
+  {
+    id: "ad-04",
+    name: "DUOTACK® 365",
+    category: "Adhesive/Primer",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Cartridge",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
+  },
+  {
+    id: "ad-05",
+    name: "COLPLY® EF Adhesive",
+    category: "Adhesive/Primer",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Pail (5 Gal)",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
+  },
+  {
+    id: "ad-06",
+    name: "ALSAN® RS 222 PRIMER",
+    category: "Adhesive/Primer",
+    description:
+      "Legacy selection: replace with a sourced catalog product or enter verified estimating inputs.",
+    unit: "Pail (5 Gal)",
+    coveragePerUnit: null,
+    pricePerUnit: null,
+    legacyOnly: true,
+    colorHex: "#7C878E",
+  },
 ];
+
+export const ACTIVE_MATERIALS = SOPREMA_MATERIALS.filter(
+  (material) => !material.legacyOnly,
+);

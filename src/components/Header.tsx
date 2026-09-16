@@ -38,16 +38,16 @@ export default function Header({
   onSignOut
 }: HeaderProps) {
   return (
-    <header className="bg-soprema-black text-white p-4 flex justify-between items-center shrink-0">
-      <div className="flex items-center gap-6">
+    <header className="bg-soprema-black text-white p-4 flex justify-between items-center shrink-0 overflow-x-auto">
+      <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-soprema-blue rounded-md flex items-center justify-center font-bold text-lg">
             R
           </div>
-          <h1 className="text-xl font-bold tracking-wider hidden md:block">ROOF SYSTEM BUILDER</h1>
+          <h1 className="text-xl font-bold tracking-wider hidden md:block">SOPREMA · ROOF STUDIO</h1>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button 
             onClick={() => setIsDarkMode(!isDarkMode)}
             className="text-xs flex items-center gap-1.5 font-bold uppercase tracking-wider bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded border border-gray-600 transition-colors"
@@ -71,7 +71,7 @@ export default function Header({
             title="Export Project to JSON"
             className="text-xs flex items-center gap-1.5 font-bold uppercase tracking-wider bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded border border-gray-600 transition-colors"
           >
-            <Download className="w-3.5 h-3.5" /> Export
+            <Download className="w-3.5 h-3.5" /> JSON
           </button>
           
           <div className="h-4 w-px bg-gray-700 mx-1"></div>
@@ -96,7 +96,7 @@ export default function Header({
           
           <button 
             onClick={handleShareQR}
-            title="Share via QR Code"
+            title="Share via QR Code" aria-label="Share via QR Code"
             className="text-xs flex items-center justify-center bg-gray-800 hover:bg-gray-700 px-2 py-1.5 rounded border border-gray-600 transition-colors"
           >
             <QrCode className="w-3.5 h-3.5" />
@@ -123,7 +123,7 @@ export default function Header({
             title="Reset Workspace"
             className="text-xs flex items-center gap-1.5 font-bold uppercase tracking-wider bg-red-900/50 hover:bg-red-800/80 text-red-100 px-3 py-1.5 rounded border border-red-800 transition-colors ml-1"
           >
-            <RotateCcw className="w-3.5 h-3.5" /> Reset
+            <RotateCcw className="w-3.5 h-3.5" /> Reset Workspace
           </button>
 
           {statusMessage && (
@@ -134,11 +134,11 @@ export default function Header({
 
           <div className="h-4 w-px bg-gray-700 mx-1"></div>
           {user ? (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-gray-300 ml-1">{user.email}</span>
               <button 
                 onClick={onSignOut}
-                title="Sign Out"
+                title="Sign Out" aria-label="Sign Out"
                 className="text-xs flex items-center justify-center bg-gray-800 hover:bg-gray-700 p-1.5 rounded border border-gray-600 transition-colors text-gray-300 hover:text-white"
               >
                 <LogOut className="w-3.5 h-3.5" />

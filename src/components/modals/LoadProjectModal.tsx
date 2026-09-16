@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FolderOpen, X } from 'lucide-react';
 import { SavedProject } from '../../types';
 import { ROOF_TEMPLATES } from '../../templates';
@@ -22,14 +22,16 @@ export default function LoadProjectModal({
   onDelete,
   onLoad
 }: LoadProjectModalProps) {
-  const [activeTab, setActiveTab] = useState<'saved' | 'templates'>('templates');
+  const [activeTab, setActiveTab] = useState<'saved' | 'templates'>('saved');
 
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => { dialog.current?.showModal(); }, []);
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <dialog ref={dialog} onCancel={onClose} aria-label="Projects and templates" className="m-auto max-h-[90dvh] rounded-lg bg-transparent p-0 text-text-main backdrop:bg-black/60">
       <div className="bg-bg-panel rounded-lg shadow-2xl max-w-2xl w-full flex flex-col max-h-[80vh] overflow-hidden">
         <div className="p-4 border-b border-border-main flex justify-between items-center bg-bg-panel-hover">
           <div className="flex items-center gap-4">
-            <h3 className="text-lg font-bold text-soprema-black flex items-center gap-2">
+            <h3 className="text-lg font-bold text-text-main flex items-center gap-2">
               <FolderOpen className="w-5 h-5 text-soprema-blue" /> Projects & Templates
             </h3>
             <div className="flex bg-gray-200 dark:bg-gray-800 p-1 rounded-md ml-4">
@@ -49,7 +51,7 @@ export default function LoadProjectModal({
           </div>
           <div className="flex items-center gap-4">
             {activeTab === 'saved' && (
-              <select
+              <select aria-label="Sort saved projects"
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value)}
                 className="text-sm border border-gray-300 rounded px-2 py-1 outline-none focus:border-soprema-blue bg-bg-panel text-text-main"
@@ -60,7 +62,7 @@ export default function LoadProjectModal({
                 <option value="name-desc">Name (Z-A)</option>
               </select>
             )}
-            <button onClick={onClose} className="text-text-muted hover:text-text-main p-1 rounded-md hover:bg-gray-200 transition-colors">
+            <button aria-label="Close projects" onClick={onClose} className="text-text-muted hover:text-text-main p-1 rounded-md hover:bg-gray-200 transition-colors">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -69,7 +71,7 @@ export default function LoadProjectModal({
         <div className="p-4 overflow-y-auto flex-1 flex flex-col gap-3 bg-bg-panel">
           {activeTab === 'templates' ? (
             ROOF_TEMPLATES.map(proj => (
-              <div key={proj.id} className="border border-border-main rounded-lg p-3 flex justify-between items-center hover:bg-blue-50/50 transition-colors group">
+              <div key={proj.id} className="border border-border-main rounded-lg p-3 flex flex-wrap gap-3 justify-between items-center hover:bg-blue-50/50 transition-colors group">
                 <div className="flex items-center gap-4">
                   <div className="w-24 h-16 bg-blue-100 dark:bg-blue-900 rounded border border-blue-200 flex items-center justify-center text-xs text-soprema-blue font-bold shadow-sm text-center px-2">
                     Template
@@ -99,7 +101,7 @@ export default function LoadProjectModal({
               <p className="text-sm text-text-muted italic text-center mt-4">No saved projects found.</p>
             ) : (
               sortedProjects.map(proj => (
-                <div key={proj.id} className="border border-border-main rounded-lg p-3 flex justify-between items-center hover:bg-blue-50/50 transition-colors group">
+                <div key={proj.id} className="border border-border-main rounded-lg p-3 flex flex-wrap gap-3 justify-between items-center hover:bg-blue-50/50 transition-colors group">
                   <div className="flex items-center gap-4">
                     {proj.thumbnail ? (
                       <img src={proj.thumbnail} alt="Preview" className="w-24 h-16 object-cover rounded border border-gray-300 shadow-sm" />
@@ -119,13 +121,13 @@ export default function LoadProjectModal({
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={() => onDuplicate(proj)}
-                      className="px-3 py-1.5 text-xs font-medium text-text-muted hover:text-soprema-blue hover:bg-blue-50 rounded border border-transparent hover:border-blue-200 transition-colors opacity-0 group-hover:opacity-100 dark:hover:bg-blue-900/30"
+                      className="px-3 py-1.5 text-xs font-medium text-text-muted hover:text-soprema-blue hover:bg-blue-50 rounded border border-transparent hover:border-blue-200 transition-colors  dark:hover:bg-blue-900/30"
                     >
                       Duplicate
                     </button>
                     <button 
                       onClick={() => onDelete(proj.id)}
-                      className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded border border-transparent hover:border-red-200 transition-colors opacity-0 group-hover:opacity-100 dark:hover:bg-red-900/30"
+                      className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded border border-transparent hover:border-red-200 transition-colors  dark:hover:bg-red-900/30"
                     >
                       Delete
                     </button>
@@ -142,6 +144,6 @@ export default function LoadProjectModal({
           )}
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

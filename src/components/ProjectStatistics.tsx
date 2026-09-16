@@ -1,78 +1,67 @@
-import React from 'react';
-import { Calculator } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
-
-interface ProjectStatisticsProps {
-  stats: {
-    totalThickness: number;
-    avgRValue: number;
-    totalCostPerSqFt: number;
-    compositionData: {
-      name: string;
-      value: number;
-      cost: number;
-      color: string;
-    }[];
-  };
-  unitSystem: 'imperial' | 'metric';
-}
-
-export default function ProjectStatistics({ stats, unitSystem }: ProjectStatisticsProps) {
-  const isMetric = unitSystem === 'metric';
-  const displayCost = isMetric ? stats.totalCostPerSqFt * 10.7639 : stats.totalCostPerSqFt;
-  const displayThickness = isMetric ? (stats.totalThickness * 25.4).toFixed(1) + ' mm' : stats.totalThickness.toFixed(2) + '"';
-  const displayRValue = isMetric ? (stats.avgRValue / 5.678).toFixed(2) : stats.avgRValue.toFixed(1);
-
+import { Layer, RoofParams } from "../types";
+import {
+  areaUnit,
+  displayArea,
+  displayThickness,
+  formatNumber,
+  money,
+} from "../utils";
+import { computeEstimate } from "../lib/estimate";
+export default function ProjectStatistics({
+  params,
+  layers,
+}: {
+  params: RoofParams;
+  layers: Layer[];
+}) {
+  const estimate = computeEstimate(params, layers);
+  const thickness = layers.reduce(
+    (n, l) => n + (l.material.thicknessMm || 0),
+    0,
+  );
+  const resistance = layers.reduce((n, l) => n + (l.material.rValue || 0), 0);
+  const allThickness =
+    layers.length > 0 && layers.every((l) => l.material.thicknessMm != null);
   return (
-    <div className="p-6 border-b border-border-main bg-bg-panel-hover">
-      <h2 className="text-lg font-bold text-soprema-black flex items-center gap-2 mb-4">
-        <Calculator className="w-5 h-5 text-soprema-blue" />
-        Project Statistics
-      </h2>
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="bg-bg-panel p-3 rounded-md border border-border-main shadow-sm flex flex-col justify-center items-center text-center">
-          <span className="text-xs text-text-muted font-medium">Est. Cost / {isMetric ? 'Sq M' : 'Sq Ft'}</span>
-          <span className="text-lg font-bold text-text-main">${displayCost.toFixed(2)}</span>
-        </div>
-        <div className="bg-bg-panel p-3 rounded-md border border-border-main shadow-sm flex flex-col justify-center items-center text-center">
-          <span className="text-xs text-text-muted font-medium">Total Thickness</span>
-          <span className="text-lg font-bold text-text-main">{displayThickness}</span>
-        </div>
-        <div className="col-span-2 bg-bg-panel p-3 rounded-md border border-border-main shadow-sm flex flex-col justify-center items-center text-center">
-          <span className="text-xs text-text-muted font-medium">Avg Layer {isMetric ? 'RSI' : 'R-Value'}</span>
-          <span className="text-lg font-bold text-text-main">{displayRValue}</span>
-        </div>
-      </div>
-
-      {stats.compositionData.length > 0 && (
-        <div className="bg-bg-panel p-3 rounded-md border border-border-main shadow-sm flex flex-col">
-          <span className="text-xs text-text-muted font-medium mb-2 text-center">Cost Composition</span>
-          <div className="h-48 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={stats.compositionData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={30}
-                  outerRadius={50}
-                  paddingAngle={2}
-                  dataKey="cost"
-                >
-                  {stats.compositionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <RechartsTooltip 
-                  formatter={(value: number) => `$${value.toFixed(2)}`}
-                  contentStyle={{ backgroundColor: 'var(--bg-panel)', borderColor: 'var(--border-main)', color: 'var(--text-main)', fontSize: '12px' }}
-                />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: 'var(--text-main)' }} />
-              </PieChart>
-            </ResponsiveContainer>
+    <section className="p-5 bg-bg-panel-hover space-y-3">
+      <h2 className="font-bold">Assembly at a glance</h2>
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        {[
+          [
+            "Surface area",
+            `${formatNumber(displayArea(estimate.surfaceArea, params.unitSystem))} ${areaUnit(params.unitSystem)}`,
+          ],
+          ["Selected layers", String(layers.length)],
+          [
+            allThickness ? "Total thickness" : "Known thickness only",
+            displayThickness(thickness, params.unitSystem),
+          ],
+          [
+            "Known " + (params.unitSystem === "metric" ? "RSI" : "R-value"),
+            formatNumber(
+              params.unitSystem === "metric"
+                ? resistance / 5.678263337
+                : resistance,
+            ),
+          ],
+          [
+            estimate.isComplete ? "Estimated total" : "Priced subtotal",
+            money(estimate.total),
+          ],
+        ].map(([label, value]) => (
+          <div
+            className="border border-border-main bg-bg-panel rounded-lg p-3"
+            key={label}
+          >
+            <p className="text-xs text-text-muted">{label}</p>
+            <p className="font-bold mt-1">{value}</p>
           </div>
-        </div>
-      )}
-    </div>
+        ))}
+      </div>
+      <p className="text-xs text-text-muted">
+        Thermal resistance sums documented layers only. Unknown properties are
+        excluded; this is not a whole-roof U-factor calculation.
+      </p>
+    </section>
   );
 }
