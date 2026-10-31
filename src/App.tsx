@@ -86,10 +86,13 @@ export default function App() {
       const hash = new URLSearchParams(location.hash.slice(1)).get("project");
       const old = new URLSearchParams(location.search).get("state");
       const saved = localStorage.getItem("soprema_autosave");
+      // Legacy ?state= links: URLSearchParams decodes '+' as a space, and
+      // atob's forgiving base64 then DROPS that space, losing a character
+      // from standard-base64 payloads — restore '+' before decoding.
       const project = hash
         ? decodeProject(hash)
         : old
-          ? parseProject(JSON.parse(atob(old)))
+          ? parseProject(JSON.parse(atob(old.replace(/ /g, "+"))))
           : saved
             ? parseProject(JSON.parse(saved))
             : null;
@@ -205,7 +208,6 @@ export default function App() {
           setModal("load");
         }}
         openResetConfirm={() => setModal("reset")}
-        statusMessage=""
         user={user}
         onAuthClick={() =>
           firebaseConfigured

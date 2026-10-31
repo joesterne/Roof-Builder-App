@@ -1,6 +1,7 @@
 import React from 'react';
 import { Sun, Moon, Download, FileText, Share, Save, FolderOpen, RotateCcw, QrCode, User, LogOut } from 'lucide-react';
 import { RoofParams } from '../types';
+import type { User } from 'firebase/auth';
 
 interface HeaderProps {
   isDarkMode: boolean;
@@ -14,8 +15,7 @@ interface HeaderProps {
   handleSave: () => void;
   handleLoadClick: () => void;
   openResetConfirm: () => void;
-  statusMessage: string;
-  user: any;
+  user: User | null;
   onAuthClick: () => void;
   onSignOut: () => void;
 }
@@ -32,7 +32,6 @@ export default function Header({
   handleSave,
   handleLoadClick,
   openResetConfirm,
-  statusMessage,
   user,
   onAuthClick,
   onSignOut
@@ -126,11 +125,7 @@ export default function Header({
             <RotateCcw className="w-3.5 h-3.5" /> Reset Workspace
           </button>
 
-          {statusMessage && (
-            <span className="text-xs font-medium text-soprema-blue animate-pulse ml-2">
-              {statusMessage}
-            </span>
-          )}
+
 
           <div className="h-4 w-px bg-gray-700 mx-1"></div>
           {user ? (

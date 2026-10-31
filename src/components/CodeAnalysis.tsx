@@ -39,7 +39,7 @@ export default React.memo(function CodeAnalysis({ layers, params, setParams }: C
         <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-soprema-blue">Project review</p>
         <h2 id="review-heading" className="flex items-center gap-2 text-xl font-bold text-soprema-black"><ClipboardCheck className="h-6 w-6 text-soprema-blue" /> Codes, criteria & materials</h2>
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-text-secondary">{report.systemOverview}</p>
-        <p className="mt-2 text-xs text-text-muted">Jurisdiction: {report.jurisdiction} · Source records checked {report.checkedAt}</p>
+        <p className="mt-2 text-xs text-text-muted">Jurisdiction: {report.jurisdiction} · Source records as of {report.checkedAt}</p>
       </header>
 
       <fieldset className="rounded-xl border border-border-main bg-bg-page p-4" disabled={!setParams}>

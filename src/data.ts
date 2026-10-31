@@ -20,7 +20,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     samplePricePerUnit: 160,
     sourceDate: "2026-09-15",
     estimateScope: "field",
-    colorHex: "#4d8dbf",
     coverageNote: "Net coverage per roll.",
     techSpecs: {
       Application: "Self-adhered",
@@ -44,7 +43,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     samplePricePerUnit: 50,
     sourceDate: "2026-09-15",
     estimateScope: "field",
-    colorHex: "#e6ce81",
     rValue: 11.4,
     techSpecs: {
       "R-value": "11.4 at 2 inches",
@@ -77,7 +75,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     samplePricePerUnit: 60,
     sourceDate: "2026-09-15",
     estimateScope: "field",
-    colorHex: "#e6ce81",
     rValue: 11.4,
     techSpecs: {
       "R-value": "11.4 at 2 inches",
@@ -110,7 +107,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     samplePricePerUnit: 40,
     sourceDate: "2026-09-15",
     estimateScope: "field",
-    colorHex: "#685c4a",
     weightKgM2: 9.9,
   },
   {
@@ -131,7 +127,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     samplePricePerUnit: 160,
     sourceDate: "2026-09-15",
     estimateScope: "field",
-    colorHex: "#454e53",
   },
   {
     id: "sopralene-flam-180",
@@ -151,7 +146,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     samplePricePerUnit: 150,
     sourceDate: "2026-09-15",
     estimateScope: "field",
-    colorHex: "#454e53",
   },
   {
     id: "sopralene-flam-180-fr-plus-gr",
@@ -171,7 +165,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     samplePricePerUnit: 190,
     sourceDate: "2026-09-15",
     estimateScope: "field",
-    colorHex: "#c6c9ca",
     techSpecs: {
       "Initial SRI": "25 (WH 01526)",
       Application: "Heat-welded",
@@ -195,7 +188,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     samplePricePerUnit: 1300,
     sourceDate: "2026-09-15",
     estimateScope: "field",
-    colorHex: "#eef0f0",
     coverageNote:
       "10 × 100 ft roll is gross area. Enter net coverage after laps/layout.",
     techSpecs: {
@@ -227,7 +219,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     samplePricePerUnit: 320,
     sourceDate: "2026-09-15",
     estimateScope: "detail",
-    colorHex: "#6e98ae",
     coverageBasis: "system",
     vocGramsPerLiter: 5,
     coverageNote:
@@ -252,7 +243,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     samplePricePerUnit: 45,
     sourceDate: "2026-09-15",
     estimateScope: "interface",
-    colorHex: "#b59362",
     vocGramsPerLiter: 0,
     coverageNote:
       "Enter project coverage per cartridge from approved ribbon spacing; published range 100–150 ft².",
@@ -270,7 +260,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "vb-02",
@@ -282,7 +271,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "vb-03",
@@ -294,7 +282,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "vb-04",
@@ -306,7 +293,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "in-01",
@@ -318,7 +304,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "in-02",
@@ -330,7 +315,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "in-03",
@@ -342,7 +326,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "in-04",
@@ -354,7 +337,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "in-05",
@@ -366,7 +348,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "cb-01",
@@ -378,7 +359,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "cb-02",
@@ -390,7 +370,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "cb-03",
@@ -402,7 +381,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "bp-01",
@@ -414,7 +392,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "bp-02",
@@ -426,7 +403,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "bp-03",
@@ -438,7 +414,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "bp-04",
@@ -450,7 +425,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "bp-05",
@@ -462,7 +436,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "cs-01",
@@ -474,7 +447,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "cs-02",
@@ -486,7 +458,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "cs-03",
@@ -498,7 +469,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "cs-04",
@@ -510,7 +480,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "cs-05",
@@ -522,7 +491,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "cs-06",
@@ -534,7 +502,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "cs-07",
@@ -546,7 +513,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "cs-08",
@@ -558,7 +524,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "cs-09",
@@ -570,7 +535,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "cs-10",
@@ -582,7 +546,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "ad-01",
@@ -594,7 +557,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "ad-02",
@@ -606,7 +568,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "ad-03",
@@ -618,7 +579,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "ad-04",
@@ -630,7 +590,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "ad-05",
@@ -642,7 +601,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
   {
     id: "ad-06",
@@ -654,7 +612,6 @@ export const SOPREMA_MATERIALS: Material[] = [
     coveragePerUnit: null,
     pricePerUnit: null,
     legacyOnly: true,
-    colorHex: "#7C878E",
   },
 ];
 

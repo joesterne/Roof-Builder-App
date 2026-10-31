@@ -190,8 +190,8 @@ export default React.memo(function Visualizer({ layers, setLayers, params, setPa
           <button type="button" className={buttonClass} aria-label="Zoom out" title="Zoom out" disabled={view.zoom <= 0.5} onClick={() => updateView({ zoom: view.zoom - 0.1 })}><ZoomOut size={17} /></button>
           <span className="min-w-12 text-center text-xs font-semibold tabular-nums text-text-secondary" aria-live="polite">{Math.round(view.zoom * 100)}%</span>
           <button type="button" className={buttonClass} aria-label="Zoom in" title="Zoom in" disabled={view.zoom >= 2} onClick={() => updateView({ zoom: view.zoom + 0.1 })}><ZoomIn size={17} /></button>
-          <button type="button" className={`${buttonClass} ml-2`} aria-label="Rotate view left" title="Rotate left" onClick={() => updateView({ rotation: view.rotation - 15 < -180 ? 165 : view.rotation - 15 })}><RotateCcw size={17} /></button>
-          <button type="button" className={buttonClass} aria-label="Rotate view right" title="Rotate right" onClick={() => updateView({ rotation: view.rotation + 15 > 180 ? -165 : view.rotation + 15 })}><RotateCw size={17} /></button>
+          <button type="button" className={`${buttonClass} ml-2`} aria-label="Rotate view left" title="Rotate left" onClick={() => updateView({ rotation: ((view.rotation - 15 + 180) % 360 + 360) % 360 - 180 })}><RotateCcw size={17} /></button>
+          <button type="button" className={buttonClass} aria-label="Rotate view right" title="Rotate right" onClick={() => updateView({ rotation: ((view.rotation + 15 + 180) % 360 + 360) % 360 - 180 })}><RotateCw size={17} /></button>
           <button type="button" className={`${buttonClass} ml-1 px-3 text-xs font-semibold`} onClick={() => updateView(DEFAULT_VISUALIZER)}>Reset view</button>
         </div>
       </div>

@@ -24,7 +24,6 @@ export interface Material {
   coveragePerUnit: number | null;
   pricePerUnit: number | null;
   samplePricePerUnit?: number;
-  colorHex?: string;
   techSpecs?: Record<string, string>;
   certifications?: string[];
   productUrl?: string;
@@ -50,16 +49,11 @@ export interface Layer {
   areaOverride?: number | null;
   coats?: number;
 }
-export interface ClimateData {
-  temperature: number;
-  conditions: string;
-}
 export interface RoofParams {
   area: number;
   pitch: number;
   location: string;
   coordinates?: { lat: number; lng: number };
-  climateData?: ClimateData;
   wasteFactor: number;
   projectNotes?: string;
   unitSystem: UnitSystem;
@@ -85,20 +79,6 @@ export interface RoofParams {
     weather: "none" | "rain" | "snow";
     weatherIntensity: number;
   };
-}
-export interface BOMItem {
-  material: Material;
-  quantity: number | null;
-  totalCost: number | null;
-}
-export interface CodeAnalysis {
-  systemOverview: string;
-  localRegulations: string[];
-  materialDefinitions: {
-    material: string;
-    description: string;
-    environmentalImpact: string;
-  }[];
 }
 export interface SavedProject {
   schemaVersion?: 2;
