@@ -1,7 +1,7 @@
 import React from 'react';
 import { Sun, Moon, Download, FileText, Share, Save, FolderOpen, RotateCcw, QrCode, User, LogOut } from 'lucide-react';
 import { RoofParams } from '../types';
-import type { User } from 'firebase/auth';
+import type { User as FirebaseUser } from 'firebase/auth';
 
 interface HeaderProps {
   isDarkMode: boolean;
@@ -15,7 +15,7 @@ interface HeaderProps {
   handleSave: () => void;
   handleLoadClick: () => void;
   openResetConfirm: () => void;
-  user: User | null;
+  user: FirebaseUser | null;
   onAuthClick: () => void;
   onSignOut: () => void;
 }
